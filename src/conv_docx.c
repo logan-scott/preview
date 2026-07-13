@@ -1,5 +1,6 @@
 #include "conv_docx.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -152,6 +153,8 @@ static int numbering_is_bullet(const numbering *nb, int num_id, int ilvl) {
 typedef struct {
     /* run formatting */
     int bold, italic, underline, strike, vert; /* vert: 1 sup, -1 sub */
+    char color[8];     /* run text color "RRGGBB", empty if none */
+    char highlight[24]; /* named highlight color, empty if none */
     /* paragraph properties */
     int heading;    /* 0 = none, 1-6 */
     int list_numid; /* -1 = not a list item */
@@ -367,10 +370,39 @@ static void docx_walk(docx_ctx *c, const char *xml, size_t len) {
                             st->vert = -1;
                         free(v);
                     }
+                } else if (strcmp(n, "w:color") == 0) {
+                    char *v = xml_attr(&x, "val");
+                    st->color[0] = '\0';
+                    if (v && strcmp(v, "auto") != 0 && strlen(v) == 6) {
+                        int hex = 1;
+                        for (int k = 0; k < 6; k++)
+                            if (!isxdigit((unsigned char)v[k]))
+                                hex = 0;
+                        if (hex)
+                            snprintf(st->color, sizeof(st->color), "%s", v);
+                    }
+                    free(v);
+                } else if (strcmp(n, "w:highlight") == 0) {
+                    char *v = xml_attr(&x, "val");
+                    st->highlight[0] = '\0';
+                    if (v && strcmp(v, "none") != 0) {
+                        /* OOXML highlight values are valid CSS color names
+                         * (yellow, green, cyan, ...); pass through only
+                         * lowercase ascii letters as a safety measure */
+                        int ok = v[0] != '\0';
+                        for (const char *q = v; *q; q++)
+                            if (*q < 'a' || *q > 'z')
+                                ok = 0;
+                        if (ok)
+                            snprintf(st->highlight, sizeof(st->highlight),
+                                     "%s", v);
+                    }
+                    free(v);
                 }
             } else if (strcmp(n, "w:r") == 0 && !empty) {
                 st->bold = st->italic = st->underline = st->strike = 0;
                 st->vert = 0;
+                st->color[0] = st->highlight[0] = '\0';
             } else if (strcmp(n, "w:t") == 0) {
                 st->in_wt = !empty;
             } else if (strcmp(n, "w:instrText") == 0 && !empty) {
@@ -491,6 +523,15 @@ static void docx_walk(docx_ctx *c, const char *xml, size_t len) {
             if (!st->in_wt || st->in_del || st->in_instr)
                 continue;
 
+            int styled = st->color[0] || st->highlight[0];
+            if (styled) {
+                sb_append(c->para, "<span style=\"");
+                if (st->color[0])
+                    sb_appendf(c->para, "color:#%s;", st->color);
+                if (st->highlight[0])
+                    sb_appendf(c->para, "background:%s;", st->highlight);
+                sb_append(c->para, "\">");
+            }
             if (st->bold) sb_append(c->para, "<b>");
             if (st->italic) sb_append(c->para, "<i>");
             if (st->underline) sb_append(c->para, "<u>");
@@ -511,6 +552,7 @@ static void docx_walk(docx_ctx *c, const char *xml, size_t len) {
             if (st->underline) sb_append(c->para, "</u>");
             if (st->italic) sb_append(c->para, "</i>");
             if (st->bold) sb_append(c->para, "</b>");
+            if (styled) sb_append(c->para, "</span>");
         }
     }
     close_lists_to(c, 0);

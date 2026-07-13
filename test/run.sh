@@ -94,6 +94,7 @@ has "docx" "<ul><li>bullet one"
 has "docx" "<ol><li>first"
 has "docx" 'colspan="2"'
 has "docx" "<sup>2</sup>"
+has "docx" "color:#C00000"
 has "docx" 'href="https://example.com/x"'
 has "docx" 'href="#blocked"'
 has "docx" "data:image/png;base64,"
@@ -106,6 +107,7 @@ has "xlsx" "<td>Product</td>"
 has "xlsx" "<td>1234.5</td>"
 has "xlsx" "<td>TRUE</td>"
 has "xlsx" "<td>inline text</td>"
+has "xlsx" "<td>2025-01-01</td>"   # serial 45658, date-styled cell
 
 # --- pptx -------------------------------------------------------------------
 render deck.pptx
