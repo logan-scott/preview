@@ -20,7 +20,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-#define PREVIEW_VERSION "0.2.0"
+#define PREVIEW_VERSION "0.2.1"
 
 static void usage(FILE *out) {
     fprintf(out,
