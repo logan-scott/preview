@@ -2,3 +2,4 @@ build/
 preview
 *.o
 *.dSYM/
+test/fixtures/

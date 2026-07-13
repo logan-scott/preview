@@ -112,7 +112,10 @@ $(OBJS): $(wildcard src/*.h)
 $(BUILD):
 	mkdir -p $(BUILD)
 
-clean:
-	rm -rf $(BUILD) $(BIN)
+test: $(BIN)
+	sh test/run.sh $(abspath $(BIN))
 
-.PHONY: all clean
+clean:
+	rm -rf $(BUILD) $(BIN) test/fixtures
+
+.PHONY: all clean test

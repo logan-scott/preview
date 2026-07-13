@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # macOS: full build including PDF (Homebrew mupdf links cleanly).
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mupdf
+        run: brew install mupdf
+      - name: Build
+        run: make
+      - name: Test
+        run: make test
+
+  # Linux: WebKitGTK backend. Built without mupdf — Ubuntu's libmupdf is a
+  # static archive with no pkg-config file and a long chain of transitive
+  # deps, so the Makefile falls back to NO_PDF here. The suite skips PDF
+  # render assertions when PDF isn't built; macOS covers the PDF path.
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install WebKitGTK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config \
+            libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Build
+        run: make
+      - name: Test
+        run: make test
+
+  # AddressSanitizer + UndefinedBehaviorSanitizer over the whole corpus,
+  # including the crafted hostile inputs. Sanitizers are injected through
+  # CC/CXX so the Makefile's link flags are preserved; NO_PDF keeps mupdf
+  # (uninstrumented third-party code) out of the picture.
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install WebKitGTK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config \
+            libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Build and test with sanitizers
+        env:
+          ASAN_OPTIONS: detect_leaks=0
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          make test NO_PDF=1 \
+            CC="cc -fsanitize=address,undefined -fno-omit-frame-pointer" \
+            CXX="c++ -fsanitize=address,undefined -fno-omit-frame-pointer"
