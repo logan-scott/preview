@@ -1,0 +1,58 @@
+.TH PREVIEW 1 "2026" "preview 0.1.0" "User Commands"
+.SH NAME
+preview \- open a document in a native viewer window
+.SH SYNOPSIS
+.B preview
+.RI [ options ]
+.I file
+.SH DESCRIPTION
+.B preview
+opens
+.I file
+in a native pop-up window and renders it in a viewer-friendly form, like
+macOS Quick Look but cross-platform (macOS and Linux) and covering many
+file types. Each supported type is converted to HTML and displayed in the
+operating system's built-in web view (WKWebView on macOS, WebKitGTK on
+Linux).
+.PP
+Supported types include Markdown, images (PNG, JPEG, GIF, WebP, BMP, SVG,
+and others), plain text and source code with syntax highlighting, JSON,
+CSV and TSV, HTML, PDF, and the Office formats DOCX, XLSX, and PPTX. The
+type is detected from the file extension, falling back to magic bytes and
+then a text-versus-binary heuristic.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Print usage information and exit.
+.TP
+.BR \-V ", " \-\-version
+Print the version and exit.
+.TP
+.B \-\-dump\-html
+Print the generated HTML to standard output instead of opening a window.
+.TP
+.B \-\-close\-after \fIms\fR
+Automatically close the window after the given number of milliseconds.
+Intended for testing.
+.SH "KEYS"
+In the viewer window,
+.B Esc
+closes the window and the arrow keys, space, and page keys scroll. The
+color scheme follows the operating system's light or dark setting.
+.SH "EXIT STATUS"
+.TP
+.B 0
+Success.
+.TP
+.B 1
+The file could not be read.
+.TP
+.B 2
+Invalid command-line usage.
+.SH "SECURITY"
+Documents are treated as untrusted: scripts embedded in Markdown are not
+executed, unsafe link schemes are neutralized, and only verified image
+data is inlined. See the project README for the full security model,
+including known limitations such as remote image loading.
+.SH "SEE ALSO"
+Project homepage: https://github.com/logan-scott/preview

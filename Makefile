@@ -8,6 +8,13 @@ CXX     ?= c++
 BUILD   := build
 BIN     := preview
 
+# install layout (override PREFIX for a user-local install, e.g.
+# `make install PREFIX=$HOME/.local`; DESTDIR is honored for packaging)
+PREFIX  ?= /usr/local
+BINDIR  ?= $(PREFIX)/bin
+MANDIR  ?= $(PREFIX)/share/man/man1
+INSTALL ?= install
+
 WARN    := -Wall -Wextra
 # _DEFAULT_SOURCE: under -std=c11 glibc hides POSIX symbols (realpath,
 # strcasecmp, fileno, nanosleep, ...); this re-exposes them. No effect on
@@ -118,7 +125,17 @@ $(BUILD):
 test: $(BIN)
 	sh test/run.sh $(abspath $(BIN))
 
+install: $(BIN)
+	$(INSTALL) -d $(DESTDIR)$(BINDIR)
+	$(INSTALL) -m 755 $(BIN) $(DESTDIR)$(BINDIR)/$(BIN)
+	$(INSTALL) -d $(DESTDIR)$(MANDIR)
+	$(INSTALL) -m 644 man/preview.1 $(DESTDIR)$(MANDIR)/preview.1
+
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/$(BIN)
+	rm -f $(DESTDIR)$(MANDIR)/preview.1
+
 clean:
 	rm -rf $(BUILD) $(BIN) test/fixtures
 
-.PHONY: all clean test
+.PHONY: all clean test install uninstall
