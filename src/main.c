@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -18,14 +19,30 @@ static void usage(FILE *out) {
     fprintf(out,
             "usage: preview [options] <file>\n"
             "\n"
-            "Open <file> in a native viewer window.\n"
+            "Open <file> in a native viewer window. The file type is\n"
+            "detected automatically and rendered as HTML.\n"
             "\n"
-            "options:\n"
-            "  -h, --help          show this help\n"
-            "  -V, --version       print version\n"
-            "  --dump-html         print the generated HTML to stdout "
-            "instead of opening a window\n"
-            "  --close-after <ms>  auto-close the window (for testing)\n");
+            "Supported types:\n"
+            "  Markdown, images (png/jpg/gif/webp/bmp/svg/...), plain text\n"
+            "  and source code, JSON, CSV/TSV, HTML, PDF, DOCX, XLSX, PPTX.\n"
+            "\n"
+            "Options:\n"
+            "  -h, --help          show this help and exit\n"
+            "  -V, --version       print version and exit\n"
+            "  -w, --watch         re-render when the file changes on disk\n"
+            "  --dump-html         write the generated HTML to stdout and\n"
+            "                      exit (no window)\n"
+            "  --close-after <ms>  auto-close the window after <ms> "
+            "(for testing)\n"
+            "\n"
+            "In the window: Esc closes; arrows, space, and page keys "
+            "scroll.\n"
+            "The color scheme follows the OS light/dark setting.\n"
+            "\n"
+            "Examples:\n"
+            "  preview report.docx\n"
+            "  preview --watch notes.md\n"
+            "  preview --dump-html data.csv > data.html\n");
 }
 
 /* --- auto-close support (testing) -------------------------------------- */
@@ -55,9 +72,92 @@ static void *closer_thread(void *p) {
     return NULL;
 }
 
+/* --- rendering + optional file watching -------------------------------- */
+
+typedef struct {
+    char *html; /* converted HTML (owned), or */
+    char *url;  /* file:// url for a raw .html file (owned) */
+} render_result;
+
+/* Read and render a file. Returns both fields NULL if the file cannot be
+ * read (e.g. mid-save); the converters themselves never fail — corrupt
+ * content yields an error page. */
+static render_result build_render(const char *file) {
+    render_result r = {NULL, NULL};
+    size_t len = 0;
+    const char *err = NULL;
+    uint8_t *data = read_entire_file(file, &len, &err);
+    if (!data)
+        return r;
+    filetype ft = detect_filetype(file, data, len);
+    if (ft == FT_HTML) {
+        char real[4096];
+        if (realpath(file, real)) {
+            sb u;
+            sb_init(&u);
+            sb_append(&u, "file://");
+            sb_append(&u, real);
+            r.url = sb_take(&u);
+        }
+    }
+    if (!r.url) {
+        source_file src = {file, data, len, ft};
+        r.html = convert_to_html(&src);
+    }
+    free(data);
+    return r;
+}
+
+/* Push a freshly built render into the live window (runs on the UI
+ * thread via webview_dispatch). Takes ownership of the heap arg. */
+static void apply_render(webview_t w, void *arg) {
+    render_result *r = arg;
+    if (r->url)
+        webview_navigate(w, r->url);
+    else if (r->html)
+        webview_set_html(w, r->html);
+    free(r->html);
+    free(r->url);
+    free(r);
+}
+
+typedef struct {
+    webview_t w;
+    const char *file;
+    volatile int *running;
+} watch_args;
+
+static void *watch_thread(void *p) {
+    watch_args *a = p;
+    struct stat st;
+    time_t last = 0;
+    if (stat(a->file, &st) == 0)
+        last = st.st_mtime;
+    while (*a->running) {
+        struct timespec ts = {0, 250 * 1000 * 1000}; /* 250 ms poll */
+        nanosleep(&ts, NULL);
+        if (!*a->running)
+            break;
+        if (stat(a->file, &st) != 0 || st.st_mtime == last)
+            continue;
+        last = st.st_mtime;
+        render_result rr = build_render(a->file);
+        if ((rr.html || rr.url) && *a->running) {
+            render_result *heap = malloc(sizeof(*heap));
+            *heap = rr;
+            webview_dispatch(a->w, apply_render, heap);
+        } else {
+            free(rr.html);
+            free(rr.url);
+        }
+    }
+    return NULL;
+}
+
 int main(int argc, char **argv) {
     const char *file = NULL;
     int dump_html = 0;
+    int watch = 0;
     int close_after = -1;
 
     for (int i = 1; i < argc; i++) {
@@ -68,6 +168,8 @@ int main(int argc, char **argv) {
         } else if (strcmp(a, "-V") == 0 || strcmp(a, "--version") == 0) {
             printf("preview %s\n", PREVIEW_VERSION);
             return 0;
+        } else if (strcmp(a, "-w") == 0 || strcmp(a, "--watch") == 0) {
+            watch = 1;
         } else if (strcmp(a, "--dump-html") == 0) {
             dump_html = 1;
         } else if (strcmp(a, "--close-after") == 0 && i + 1 < argc) {
@@ -88,54 +190,39 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    size_t len = 0;
-    const char *err = NULL;
-    uint8_t *data = read_entire_file(file, &len, &err);
-    if (!data) {
-        fprintf(stderr, "preview: %s: %s\n", file, err);
-        return 1;
-    }
-
-    filetype ft = detect_filetype(file, data, len);
-
-    /* HTML renders natively in the webview; navigate to it directly so
-     * relative subresources keep working. */
-    char *navigate_url = NULL;
-    char *html = NULL;
-    if (ft == FT_HTML) {
-        if (dump_html) {
-            fwrite(data, 1, len, stdout);
-            free(data);
-            return 0;
-        }
-        char real[4096];
-        if (!realpath(file, real)) {
-            fprintf(stderr, "preview: cannot resolve path: %s\n", file);
-            free(data);
+    /* --dump-html: raw bytes for HTML, converted HTML otherwise. */
+    if (dump_html) {
+        size_t len = 0;
+        const char *err = NULL;
+        uint8_t *data = read_entire_file(file, &len, &err);
+        if (!data) {
+            fprintf(stderr, "preview: %s: %s\n", file, err);
             return 1;
         }
-        sb u;
-        sb_init(&u);
-        sb_append(&u, "file://");
-        sb_append(&u, real);
-        navigate_url = sb_take(&u);
-    } else {
-        source_file src = {file, data, len, ft};
-        html = convert_to_html(&src);
-    }
-    free(data);
-
-    if (dump_html) {
-        fputs(html, stdout);
-        free(html);
+        filetype ft = detect_filetype(file, data, len);
+        if (ft == FT_HTML) {
+            fwrite(data, 1, len, stdout);
+        } else {
+            source_file src = {file, data, len, ft};
+            char *html = convert_to_html(&src);
+            fputs(html, stdout);
+            free(html);
+        }
+        free(data);
         return 0;
+    }
+
+    render_result rr = build_render(file);
+    if (!rr.html && !rr.url) {
+        fprintf(stderr, "preview: %s: cannot read file\n", file);
+        return 1;
     }
 
     webview_t w = webview_create(0, NULL);
     if (!w) {
         fprintf(stderr, "preview: failed to create window\n");
-        free(html);
-        free(navigate_url);
+        free(rr.html);
+        free(rr.url);
         return 1;
     }
     webview_set_title(w, path_basename(file));
@@ -145,22 +232,30 @@ int main(int argc, char **argv) {
     webview_init(w,
                  "window.addEventListener('keydown',e=>{"
                  "if(e.key==='Escape'){previewQuit();}});");
-    if (navigate_url)
-        webview_navigate(w, navigate_url);
+    if (rr.url)
+        webview_navigate(w, rr.url);
     else
-        webview_set_html(w, html);
+        webview_set_html(w, rr.html);
 
-    pthread_t closer;
+    pthread_t closer, watcher;
     closer_args ca = {w, close_after};
     if (close_after >= 0)
         pthread_create(&closer, NULL, closer_thread, &ca);
 
+    volatile int running = 1;
+    watch_args wa = {w, file, &running};
+    if (watch)
+        pthread_create(&watcher, NULL, watch_thread, &wa);
+
     webview_run(w);
 
+    running = 0;
+    if (watch)
+        pthread_join(watcher, NULL);
     if (close_after >= 0)
         pthread_join(closer, NULL);
     webview_destroy(w);
-    free(html);
-    free(navigate_url);
+    free(rr.html);
+    free(rr.url);
     return 0;
 }

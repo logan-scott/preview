@@ -115,9 +115,13 @@ preview [options] <file>
 
   -h, --help          show help
   -V, --version       print version
+  -w, --watch         re-render when the file changes on disk
   --dump-html         print generated HTML to stdout (no window)
   --close-after <ms>  auto-close the window; used for testing
 ```
+
+With `--watch`, the window reloads automatically whenever the file is
+saved — handy for editing Markdown or code alongside a live preview.
 
 Keys in the viewer window: **Esc** closes, **space / arrows / PgUp /
 PgDn** scroll. The color scheme follows the OS light/dark setting.
