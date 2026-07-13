@@ -86,6 +86,28 @@ for personal/internal use this doesn't matter, but distributors should
 either comply or build with `NO_PDF=1`. All other vendored libraries are
 MIT/BSD.
 
+## Installing
+
+```sh
+make
+sudo make install                 # /usr/local/bin/preview + man page
+make install PREFIX=$HOME/.local  # or a user-local prefix (no sudo)
+```
+
+`PREFIX`, `BINDIR`, `MANDIR`, and `DESTDIR` are all overridable;
+`make uninstall` removes what `install` placed.
+
+A Homebrew formula lives in [`Formula/preview.rb`](Formula/preview.rb):
+
+```sh
+brew install --build-from-source ./Formula/preview.rb
+```
+
+The formula depends on mupdf (for PDF) and builds against the system web
+view. Its stable `url` resolves once the repository is public; until then
+use `brew install --HEAD ./Formula/preview.rb`, which builds from the
+authenticated git remote.
+
 ## Usage
 
 ```
