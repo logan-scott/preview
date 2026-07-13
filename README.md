@@ -97,16 +97,23 @@ make install PREFIX=$HOME/.local  # or a user-local prefix (no sudo)
 `PREFIX`, `BINDIR`, `MANDIR`, and `DESTDIR` are all overridable;
 `make uninstall` removes what `install` placed.
 
-A Homebrew formula lives in [`Formula/preview.rb`](Formula/preview.rb):
+### Homebrew
+
+The formula lives in this repo (not in homebrew-core), so tap it, then
+install. Homebrew 6.0+ requires a one-time `brew trust` before a
+third-party tap's formula will run:
 
 ```sh
-brew install --build-from-source ./Formula/preview.rb
+brew tap logan-scott/preview https://github.com/logan-scott/preview
+brew trust logan-scott/preview
+brew install preview
 ```
 
-The formula depends on mupdf (for PDF) and builds against the system web
-view. Its stable `url` resolves once the repository is public; until then
-use `brew install --HEAD ./Formula/preview.rb`, which builds from the
-authenticated git remote.
+(`brew install preview` on its own won't work — Homebrew only searches
+homebrew-core and your tapped repos, and this formula lives in neither
+until you tap it.) The formula depends on mupdf for PDF support and
+builds against the system web view. `brew upgrade preview` picks up new
+tagged releases.
 
 ## Usage
 

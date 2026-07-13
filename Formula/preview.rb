@@ -1,17 +1,14 @@
 # Homebrew formula for preview.
 #
-# Install from this repository as a tap once it is public:
+# This formula ships in the project repo rather than homebrew-core, so it
+# must be tapped first. Homebrew 6.0+ also requires trusting a third-party
+# tap before its formula will run:
 #
 #   brew tap logan-scott/preview https://github.com/logan-scott/preview
+#   brew trust logan-scott/preview
 #   brew install preview
 #
-# or point Homebrew straight at this file:
-#
-#   brew install --build-from-source ./Formula/preview.rb
-#
-# NOTE: the stable `url` below resolves only when the repository is public.
-# While it is private, use the `--HEAD` build (`brew install --HEAD ...`),
-# which clones over your authenticated git remote.
+# For the latest commit instead of the tagged release, add --HEAD.
 class Preview < Formula
   desc "Cross-platform CLI document viewer"
   homepage "https://github.com/logan-scott/preview"
