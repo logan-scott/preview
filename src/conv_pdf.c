@@ -1,18 +1,27 @@
 #include "conv_pdf.h"
 
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "page.h"
 #include "str.h"
 
+const char *preview_self = NULL;
+
 #ifdef PREVIEW_NO_PDF
 
-char *convert_pdf(const source_file *src) {
+char *pdf_render_inproc(const source_file *src) {
     return page_error(path_basename(src->path),
                       "PDF support was not built into this binary",
                       "rebuild with mupdf available (see README)");
 }
+
+char *convert_pdf(const source_file *src) { return pdf_render_inproc(src); }
 
 #else
 
@@ -23,8 +32,10 @@ char *convert_pdf(const source_file *src) {
 #define PDF_RENDER_SCALE 2.0f
 /* Keep the generated document bounded for very long PDFs. */
 #define PDF_MAX_PAGES 200
+/* CPU seconds the isolated renderer may consume before it is killed. */
+#define PDF_CPU_LIMIT 30
 
-char *convert_pdf(const source_file *src) {
+char *pdf_render_inproc(const source_file *src) {
     const char *base = path_basename(src->path);
 
     fz_context *ctx = fz_new_context(NULL, NULL, FZ_STORE_UNLIMITED);
@@ -120,6 +131,69 @@ char *convert_pdf(const source_file *src) {
                           errbuf[0] ? errbuf : "no pages could be rendered");
     }
     return sb_take(&s);
+}
+
+/* Render a PDF in a throwaway child process. mupdf parses attacker-
+ * controlled input; running it here means a memory-corruption bug can at
+ * worst crash the child, which the parent turns into an error page, and
+ * the child carries a CPU limit against runaway documents. The child
+ * re-execs this binary in a hidden worker mode (see main.c), giving it a
+ * clean address space rather than a fork of the GUI process. */
+char *convert_pdf(const source_file *src) {
+    const char *base = path_basename(src->path);
+
+    /* No known self path (e.g. odd argv[0]) or explicit opt-out: fall
+     * back to rendering in-process. */
+    if (!preview_self || getenv("PREVIEW_PDF_NOSANDBOX"))
+        return pdf_render_inproc(src);
+
+    int fds[2];
+    if (pipe(fds) != 0)
+        return pdf_render_inproc(src);
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        close(fds[0]);
+        close(fds[1]);
+        return pdf_render_inproc(src);
+    }
+
+    if (pid == 0) { /* child: become the PDF worker */
+        close(fds[0]);
+        dup2(fds[1], STDOUT_FILENO);
+        close(fds[1]);
+        struct rlimit cpu = {PDF_CPU_LIMIT, PDF_CPU_LIMIT + 1};
+        setrlimit(RLIMIT_CPU, &cpu);
+        execl(preview_self, preview_self, "--render-pdf-worker", src->path,
+              (char *)NULL);
+        _exit(127); /* exec failed */
+    }
+
+    /* parent: drain the worker's HTML, then reap it */
+    close(fds[1]);
+    sb out;
+    sb_init(&out);
+    char buf[65536];
+    ssize_t n;
+    while ((n = read(fds[0], buf, sizeof(buf))) > 0)
+        sb_append_n(&out, buf, (size_t)n);
+    close(fds[0]);
+
+    int status = 0;
+    while (waitpid(pid, &status, 0) < 0 && errno == EINTR)
+        ;
+
+    int ok = WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    if (ok && out.len > 0)
+        return sb_take(&out);
+
+    sb_free(&out);
+    if (WIFSIGNALED(status))
+        return page_error(base, "Could not render PDF",
+                          "the isolated renderer was terminated "
+                          "(possibly a malformed or malicious file)");
+    return page_error(base, "Could not render PDF",
+                      "the isolated renderer exited unexpectedly");
 }
 
 #endif /* PREVIEW_NO_PDF */

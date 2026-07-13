@@ -9,10 +9,15 @@
 #define WEBVIEW_HEADER
 #include "webview/webview.h"
 
+#include "conv_pdf.h"
 #include "convert.h"
 #include "detect.h"
 #include "page.h"
 #include "str.h"
+
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 
 #define PREVIEW_VERSION "0.1.0"
 
@@ -157,7 +162,50 @@ static void *watch_thread(void *p) {
     return NULL;
 }
 
+/* Resolve the absolute path to this executable so the PDF worker can be
+ * re-exec'd reliably regardless of how preview was invoked. */
+static int resolve_self(char *buf, size_t cap) {
+#if defined(__APPLE__)
+    (void)cap;
+    char raw[4096];
+    uint32_t sz = sizeof(raw);
+    if (_NSGetExecutablePath(raw, &sz) != 0)
+        return 0;
+    return realpath(raw, buf) != NULL;
+#else
+    ssize_t n = readlink("/proc/self/exe", buf, cap - 1);
+    if (n <= 0)
+        return 0;
+    buf[n] = '\0';
+    return 1;
+#endif
+}
+
+/* Hidden worker: render a single PDF to stdout, then exit. Invoked by
+ * convert_pdf() in a sandboxed child process. */
+static int pdf_worker(const char *path) {
+    size_t len = 0;
+    const char *err = NULL;
+    uint8_t *data = read_entire_file(path, &len, &err);
+    if (!data)
+        return 1;
+    source_file src = {path, data, len, FT_PDF};
+    char *html = pdf_render_inproc(&src);
+    if (html)
+        fputs(html, stdout);
+    free(html);
+    free(data);
+    return 0;
+}
+
 int main(int argc, char **argv) {
+    if (argc == 3 && strcmp(argv[1], "--render-pdf-worker") == 0)
+        return pdf_worker(argv[2]);
+
+    static char self_path[4096];
+    if (resolve_self(self_path, sizeof(self_path)))
+        preview_self = self_path;
+
     const char *file = NULL;
     int dump_html = 0;
     int watch = 0;

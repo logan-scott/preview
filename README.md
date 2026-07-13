@@ -203,9 +203,13 @@ Known limitations (deliberate trade-offs, not oversights):
 - **`.html` files are rendered with full trust.** An `.html` argument is
   loaded directly (so its own relative assets and scripts work), *without*
   the CSP above — treat opening one like opening it in a browser.
-- **PDF parsing runs in-process (mupdf).** A malformed PDF that could
-  exploit mupdf runs in `preview`'s address space. mupdf is widely
-  hardened, but PDFs get no sandbox here.
+
+PDFs are parsed by mupdf in an **isolated child process** with a CPU
+limit: a memory-corruption bug in mupdf can at worst crash that child,
+which `preview` reports as an error page rather than letting it touch the
+main process. (Set `PREVIEW_PDF_NOSANDBOX=1` to render in-process.) The
+child still shares the filesystem view of the main process; a syscall
+sandbox (seccomp / macOS sandbox) would be a further tightening.
 
 ## Adding a format
 
