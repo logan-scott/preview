@@ -9,8 +9,11 @@ BUILD   := build
 BIN     := preview
 
 WARN    := -Wall -Wextra
+# _DEFAULT_SOURCE: under -std=c11 glibc hides POSIX symbols (realpath,
+# strcasecmp, fileno, nanosleep, ...); this re-exposes them. No effect on
+# macOS, where they are visible by default.
 CFLAGS  += -std=c11 $(WARN) -O2 -Ivendor -Ivendor/md4c -Isrc -I$(BUILD) \
-           -DMINIZ_NO_ZLIB_APIS
+           -D_DEFAULT_SOURCE -DMINIZ_NO_ZLIB_APIS
 CXXFLAGS+= -std=c++14 $(WARN) -O2 -Ivendor
 LDLIBS  +=
 

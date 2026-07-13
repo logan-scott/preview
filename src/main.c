@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #define WEBVIEW_HEADER
@@ -48,7 +49,8 @@ static void on_quit(const char *id, const char *req, void *arg) {
 
 static void *closer_thread(void *p) {
     closer_args *a = p;
-    usleep((useconds_t)a->ms * 1000);
+    struct timespec ts = {a->ms / 1000, (long)(a->ms % 1000) * 1000000L};
+    nanosleep(&ts, NULL);
     webview_dispatch(a->w, do_terminate, NULL);
     return NULL;
 }
