@@ -11,6 +11,7 @@
 
 #include "convert.h"
 #include "detect.h"
+#include "page.h"
 #include "str.h"
 
 #define PREVIEW_VERSION "0.1.0"
@@ -30,6 +31,8 @@ static void usage(FILE *out) {
             "  -h, --help          show this help and exit\n"
             "  -V, --version       print version and exit\n"
             "  -w, --watch         re-render when the file changes on disk\n"
+            "  --no-remote         block remote images (offline; no "
+            "tracking beacons)\n"
             "  --dump-html         write the generated HTML to stdout and\n"
             "                      exit (no window)\n"
             "  --close-after <ms>  auto-close the window after <ms> "
@@ -170,6 +173,8 @@ int main(int argc, char **argv) {
             return 0;
         } else if (strcmp(a, "-w") == 0 || strcmp(a, "--watch") == 0) {
             watch = 1;
+        } else if (strcmp(a, "--no-remote") == 0) {
+            page_offline = 1;
         } else if (strcmp(a, "--dump-html") == 0) {
             dump_html = 1;
         } else if (strcmp(a, "--close-after") == 0 && i + 1 < argc) {

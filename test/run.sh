@@ -136,6 +136,13 @@ has "zip-bomb" "survived"      # body renders; oversized part refused, no OOM
 render bad.docx
 has "bad-docx" "Not a valid DOCX"
 
+# --- offline mode -----------------------------------------------------------
+"$PREVIEW" --dump-html "$FIX/doc.md" >"$TMP" 2>/dev/null
+has "default" "img-src data: https: http:;"          # remote images allowed
+"$PREVIEW" --no-remote --dump-html "$FIX/doc.md" >"$TMP" 2>/dev/null
+has "no-remote" "img-src data:;"                       # data URIs only
+hasnt "no-remote" "img-src data: https:"
+
 # --- CLI --------------------------------------------------------------------
 "$PREVIEW" --version >"$TMP" 2>&1; has "version" "preview "
 if "$PREVIEW" --help >/dev/null 2>&1; then ok; else bad "help: nonzero exit"; fi

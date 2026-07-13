@@ -62,20 +62,21 @@ static const char BASE_CSS[] =
     ".errbox .icon{font-size:56px;margin-bottom:8px}"
     ".errbox .detail{color:var(--muted);font-size:.875em;margin-top:8px}";
 
+int page_offline = 0;
+
 void page_begin(sb *s, const char *title, unsigned flags) {
+    /* Defense in depth: the converters already strip scripts and unsafe
+     * URL schemes, but if an escaping bug ever let markup through, this
+     * CSP denies it a way out — no network fetch/XHR/websocket, no form
+     * posts, no plugins, no base-tag hijack. Inline style/script are ours
+     * (the page is built from a trusted string). By default images may be
+     * inline data URIs or remote; --no-remote (page_offline) drops remote
+     * images too, closing the tracking-beacon vector. */
     sb_append(s, "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
-                 /* Defense in depth: the converters already strip scripts
-                  * and unsafe URL schemes, but if an escaping bug ever let
-                  * markup through, this CSP denies it a way out — no
-                  * network fetch/XHR/websocket, no form posts, no plugins,
-                  * no base-tag hijack. Inline style/script are ours (the
-                  * page is built from a trusted string); images may be
-                  * inline data URIs or remote (see README note on remote
-                  * image beacons). */
                  "<meta http-equiv=\"Content-Security-Policy\" content=\""
-                 "default-src 'none';"
-                 "img-src data: https: http:;"
-                 "style-src 'unsafe-inline';"
+                 "default-src 'none';");
+    sb_append(s, page_offline ? "img-src data:;" : "img-src data: https: http:;");
+    sb_append(s, "style-src 'unsafe-inline';"
                  "script-src 'unsafe-inline';"
                  "connect-src 'none';"
                  "form-action 'none';"

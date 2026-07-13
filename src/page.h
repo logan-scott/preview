@@ -9,6 +9,11 @@ enum {
     PAGE_HLJS = 1 << 0, /* include highlight.js + theme + init script */
 };
 
+/* When nonzero, generated pages forbid remote subresources entirely
+ * (CSP img-src is restricted to data: URIs). Set once from the CLI
+ * --no-remote flag before rendering. */
+extern int page_offline;
+
 void page_begin(sb *s, const char *title, unsigned flags);
 void page_end(sb *s, unsigned flags);
 

@@ -194,11 +194,12 @@ data. The threat is a malicious document, not a malicious user.
 
 Known limitations (deliberate trade-offs, not oversights):
 
-- **Remote images load.** `img-src` permits `http(s)`, so a document that
-  references `https://tracker/pixel.png` will fetch it when displayed —
-  a tracking beacon that reveals the file was opened (and your IP), but
-  not the file's contents. Blocking this would break legitimate documents
-  that reference web images. Run offline if this matters.
+- **Remote images load by default.** `img-src` permits `http(s)`, so a
+  document that references `https://tracker/pixel.png` will fetch it when
+  displayed — a tracking beacon that reveals the file was opened (and your
+  IP), but not the file's contents. Pass `--no-remote` to forbid remote
+  subresources entirely (the CSP `img-src` drops to `data:` only), which
+  closes this vector at the cost of not showing web-hosted images.
 - **`.html` files are rendered with full trust.** An `.html` argument is
   loaded directly (so its own relative assets and scripts work), *without*
   the CSP above — treat opening one like opening it in a browser.

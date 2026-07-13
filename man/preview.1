@@ -31,6 +31,12 @@ Print the version and exit.
 .BR \-w ", " \-\-watch
 Re-render the window whenever the file changes on disk.
 .TP
+.B \-\-no\-remote
+Block remote images and other network subresources (offline mode). The
+content security policy is tightened so only inline
+.RB ( data: )
+images load, preventing documents from acting as tracking beacons.
+.TP
 .B \-\-dump\-html
 Print the generated HTML to standard output instead of opening a window.
 .TP
