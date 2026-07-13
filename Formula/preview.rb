@@ -15,8 +15,8 @@
 class Preview < Formula
   desc "Cross-platform CLI document viewer"
   homepage "https://github.com/logan-scott/preview"
-  url "https://github.com/logan-scott/preview/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "e103d893acb722b50a8a97f291949811bf04c77bcb29cbc56b09890efa1aaeeb"
+  url "https://github.com/logan-scott/preview/archive/refs/tags/v0.2.0.tar.gz"
+  sha256 "9fce383b86c496b485f6ba1068b997deba96b8707bc984511f4c2b439835ea70"
   license "MIT"
   head "https://github.com/logan-scott/preview.git", branch: "main"
 
