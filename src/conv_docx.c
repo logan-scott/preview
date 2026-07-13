@@ -10,6 +10,7 @@
 #include "page.h"
 #include "str.h"
 #include "xmlmini.h"
+#include "ziputil.h"
 
 /* ---- relationships (word/_rels/document.xml.rels) ---------------------- */
 
@@ -168,7 +169,7 @@ typedef struct {
 } walk_state;
 
 typedef struct {
-    mz_zip_archive *zip;
+    zcap *zip;
     const rel_list *rels;
     const numbering *nums;
     sb *out;  /* final document */
@@ -200,7 +201,7 @@ static void emit_image(docx_ctx *c) {
         snprintf(zpath, sizeof(zpath), "word/%s", target);
 
     size_t imglen = 0;
-    void *img = mz_zip_reader_extract_file_to_heap(c->zip, zpath, &imglen, 0);
+    void *img = zcap_extract(c->zip, zpath, &imglen);
     if (!img) {
         sb_append(c->para, "<span class=\"missing-img\">[image]</span>");
         return;
@@ -389,11 +390,15 @@ static void docx_walk(docx_ctx *c, const char *xml, size_t len) {
                 char *anchor = xml_attr(&x, "anchor");
                 const char *href = id ? rels_find(c->rels, id) : NULL;
                 sb_append(c->para, "<a href=\"");
-                if (href) {
+                if (href && safe_link_scheme(href)) {
                     sb_append_html(c->para, href, strlen(href));
-                } else if (anchor) {
+                } else if (!href && anchor) {
                     sb_append(c->para, "#");
                     sb_append_html(c->para, anchor, strlen(anchor));
+                } else {
+                    /* dangerous or missing target: keep the link text,
+                     * neuter the destination */
+                    sb_append(c->para, "#blocked");
                 }
                 sb_append(c->para, "\">");
                 free(id);
@@ -513,10 +518,6 @@ static void docx_walk(docx_ctx *c, const char *xml, size_t len) {
 
 /* ---- entry point ----------------------------------------------------------- */
 
-static char *zip_extract(mz_zip_archive *za, const char *name, size_t *len) {
-    return mz_zip_reader_extract_file_to_heap(za, name, len, 0);
-}
-
 char *convert_docx(const source_file *src) {
     const char *base = path_basename(src->path);
 
@@ -525,17 +526,19 @@ char *convert_docx(const source_file *src) {
     if (!mz_zip_reader_init_mem(&za, src->data, src->len, 0))
         return page_error(base, "Not a valid DOCX file",
                           "could not open ZIP container");
+    zcap zc;
+    zcap_init(&zc, &za);
 
     size_t doclen = 0, relslen = 0, numslen = 0;
-    char *docxml = zip_extract(&za, "word/document.xml", &doclen);
+    char *docxml = zcap_extract(&zc, "word/document.xml", &doclen);
     if (!docxml) {
         mz_zip_reader_end(&za);
         return page_error(base, "Not a valid DOCX file",
-                          "word/document.xml missing");
+                          "word/document.xml missing or oversized");
     }
     char *relsxml =
-        zip_extract(&za, "word/_rels/document.xml.rels", &relslen);
-    char *numsxml = zip_extract(&za, "word/numbering.xml", &numslen);
+        zcap_extract(&zc, "word/_rels/document.xml.rels", &relslen);
+    char *numsxml = zcap_extract(&zc, "word/numbering.xml", &numslen);
 
     rel_list rels;
     rels_parse(&rels, relsxml, relslen);
@@ -554,7 +557,7 @@ char *convert_docx(const source_file *src) {
 
     docx_ctx ctx;
     memset(&ctx, 0, sizeof(ctx));
-    ctx.zip = &za;
+    ctx.zip = &zc;
     ctx.rels = &rels;
     ctx.nums = &nums;
     ctx.out = &out;

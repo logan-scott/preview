@@ -1,13 +1,19 @@
 #include "str.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
 static void sb_grow(sb *s, size_t need) {
+    if (need > (SIZE_MAX >> 1) - s->len - 1) {
+        fprintf(stderr, "preview: content too large\n");
+        exit(1);
+    }
     if (s->len + need + 1 <= s->cap)
         return;
     size_t cap = s->cap ? s->cap : 256;
@@ -105,6 +111,34 @@ char *sb_take(sb *s) {
     s->buf = NULL;
     s->len = s->cap = 0;
     return b;
+}
+
+int safe_link_scheme(const char *url) {
+    /* Normalize the way browsers do before scheme parsing: control chars
+     * (and whitespace) embedded in the scheme are ignored, and case is
+     * folded — "jav&#x09;ascript:" must not slip through. */
+    char norm[32];
+    size_t n = 0;
+    for (const char *p = url; *p && n < sizeof(norm) - 1; p++) {
+        unsigned char c = (unsigned char)*p;
+        if (c <= 0x20 || c == 0x7f)
+            continue; /* browsers strip these inside the scheme */
+        /* stop once the scheme part is definitely over */
+        if (c == '/' || c == '?' || c == '#')
+            break;
+        norm[n++] = (char)tolower(c);
+        if (c == ':')
+            break;
+    }
+    norm[n] = '\0';
+
+    char *colon = strchr(norm, ':');
+    if (!colon)
+        return 1; /* relative URL or bare fragment */
+    if (strcmp(norm, "http:") == 0 || strcmp(norm, "https:") == 0 ||
+        strcmp(norm, "mailto:") == 0)
+        return 1;
+    return 0;
 }
 
 uint8_t *read_entire_file(const char *path, size_t *out_len,

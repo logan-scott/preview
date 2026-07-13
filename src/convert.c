@@ -1,5 +1,6 @@
 #include "convert.h"
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,6 +12,7 @@
 #include "md4c-html.h"
 #include "page.h"
 #include "str.h"
+#include "xmlmini.h"
 
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
@@ -21,6 +23,18 @@
 #define HEXDUMP_BYTES 512
 
 /* --- helpers ------------------------------------------------------------ */
+
+/* portable memmem */
+static const void *mem_find(const void *hay, size_t haylen,
+                            const void *needle, size_t nlen) {
+    if (nlen == 0 || haylen < nlen)
+        return NULL;
+    const uint8_t *h = hay;
+    for (size_t i = 0; i + nlen <= haylen; i++)
+        if (memcmp(h + i, needle, nlen) == 0)
+            return h + i;
+    return NULL;
+}
 
 static const char *image_mime(const uint8_t *d, size_t n, const char *ext) {
     /* magic first — it can't lie */
@@ -64,8 +78,10 @@ static void md_out(const MD_CHAR *text, MD_SIZE size, void *ud) {
 
 /* The webview loads our HTML from a string, so relative <img> references
  * in markdown would have no base to resolve against (and WebKit refuses
- * file:// subresources from non-file origins anyway). Embed every local
- * image as a data URI instead. */
+ * file:// subresources from non-file origins anyway). Embed local images
+ * as data URIs instead — but only content that verifiably IS an image:
+ * documents may reference arbitrary paths, and inlining non-image files
+ * would copy their bytes into the page. */
 static char *embed_local_images(const char *html, const char *srcdir) {
     sb out;
     sb_init(&out);
@@ -129,18 +145,67 @@ static char *embed_local_images(const char *html, const char *srcdir) {
             img = read_entire_file(full, &imglen, &err);
         }
 
-        if (img) {
+        const char *mime =
+            img ? image_mime(img, imglen, path_ext(url)) : NULL;
+        if (mime && strcmp(mime, "image/svg+xml") == 0) {
+            /* svg is identified by extension only; require the content
+             * to actually look like svg before inlining it */
+            size_t scan = imglen < 1024 ? imglen : 1024;
+            if (!mem_find(img, scan, "<svg", 4))
+                mime = NULL;
+        }
+        if (mime && strcmp(mime, "application/octet-stream") != 0) {
             /* copy tag up to the value, splice in the data URI */
             sb_append_n(&out, p, (size_t)(vstart - p));
-            append_data_uri(&out, image_mime(img, imglen, path_ext(url)),
-                            img, imglen);
+            append_data_uri(&out, mime, img, imglen);
             sb_append_n(&out, vend, (size_t)(gt + 1 - vend));
-            free(img);
+        } else if (img) {
+            /* exists but isn't an image: keep the surrounding markup,
+             * drop only the reference itself */
+            sb_append_n(&out, p, (size_t)(tag - p));
+            sb_append(&out, "<span></span>");
         } else {
             sb_append_n(&out, p, (size_t)(gt + 1 - p));
         }
+        free(img);
         free(url);
         p = gt + 1;
+    }
+    return sb_take(&out);
+}
+
+/* md4c emits link targets verbatim (HTML-escaped but scheme-unchecked).
+ * Rewrite any <a href="..."> whose target has a disallowed scheme —
+ * javascript:, data:, file:, ... — to an inert fragment link. */
+static char *sanitize_links(const char *html) {
+    sb out;
+    sb_init(&out);
+    const char *p = html;
+    while (*p) {
+        const char *a = strstr(p, "<a href=\"");
+        if (!a) {
+            sb_append(&out, p);
+            break;
+        }
+        const char *vstart = a + 9;
+        const char *vend = strchr(vstart, '"');
+        if (!vend) {
+            sb_append(&out, p);
+            break;
+        }
+        sb_append_n(&out, p, (size_t)(vstart - p));
+
+        /* the value is HTML-escaped; decode entities before checking so
+         * "jav&#x09;ascript:" can't sneak past */
+        sb raw;
+        sb_init(&raw);
+        xml_decode_into(&raw, vstart, (size_t)(vend - vstart));
+        if (safe_link_scheme(raw.buf))
+            sb_append_n(&out, vstart, (size_t)(vend - vstart));
+        else
+            sb_append(&out, "#blocked");
+        sb_free(&raw);
+        p = vend;
     }
     return sb_take(&out);
 }
@@ -148,16 +213,22 @@ static char *embed_local_images(const char *html, const char *srcdir) {
 static char *convert_markdown(const source_file *src) {
     sb body;
     sb_init(&body);
+    /* MD_FLAG_NOHTML: raw HTML in markdown is rendered as literal text.
+     * The webview has network access, so letting documents carry live
+     * <script> would turn any malicious README into an exfiltration
+     * vehicle. Fidelity cost: <details>, <br> etc. show as text. */
     int rc = md_html((const MD_CHAR *)src->data, (MD_SIZE)src->len, md_out,
-                     &body, MD_DIALECT_GITHUB, 0);
+                     &body, MD_DIALECT_GITHUB | MD_FLAG_NOHTML, 0);
     if (rc != 0) {
         sb_free(&body);
         return page_error(path_basename(src->path), "Could not parse markdown",
                           src->path);
     }
-    char *dir = path_dir(src->path);
-    char *embedded = embed_local_images(body.buf, dir);
+    char *sanitized = sanitize_links(body.buf);
     sb_free(&body);
+    char *dir = path_dir(src->path);
+    char *embedded = embed_local_images(sanitized, dir);
+    free(sanitized);
     free(dir);
 
     sb s;
@@ -430,6 +501,9 @@ static void png_write_cb(void *ctx, void *data, int size) {
 }
 
 static char *convert_image_stb(const source_file *src) {
+    if (src->len > INT_MAX)
+        return page_error(path_basename(src->path), "Image too large",
+                          "stb_image takes sizes as int");
     int w, h, comp;
     stbi_uc *pix = stbi_load_from_memory(src->data, (int)src->len, &w, &h,
                                          &comp, 4);

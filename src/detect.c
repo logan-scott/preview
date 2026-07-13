@@ -22,8 +22,16 @@ const char *path_ext(const char *path) {
     size_t n = strlen(dot + 1);
     if (n >= sizeof(buf))
         return "";
-    for (size_t i = 0; i <= n; i++)
-        buf[i] = (char)tolower((unsigned char)dot[1 + i]);
+    for (size_t i = 0; i < n; i++) {
+        char c = (char)tolower((unsigned char)dot[1 + i]);
+        /* extensions end up in HTML attributes and format lookups; only
+         * pass through characters that can never break out of either */
+        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+              c == '_' || c == '-' || c == '+'))
+            return "";
+        buf[i] = c;
+    }
+    buf[n] = '\0';
     return buf;
 }
 

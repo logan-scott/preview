@@ -32,4 +32,9 @@ char *sb_take(sb *s);
 uint8_t *read_entire_file(const char *path, size_t *out_len,
                           const char **err);
 
+/* 1 if a hyperlink target is safe to emit as an href: http(s), mailto,
+ * fragment, or relative — never javascript:, data:, file:, etc.
+ * Resistant to control-char and case obfuscation ("java\tscript:"). */
+int safe_link_scheme(const char *url);
+
 #endif

@@ -9,6 +9,7 @@
 #include "page.h"
 #include "str.h"
 #include "xmlmini.h"
+#include "ziputil.h"
 
 #define XLSX_MAX_SHEETS 16
 #define XLSX_MAX_ROWS 5000
@@ -74,10 +75,12 @@ static void strtab_free(strtab *st) {
 /* ---- cell reference → column index -------------------------------------- */
 
 static int col_of_ref(const char *ref) {
-    int col = 0;
-    for (; *ref >= 'A' && *ref <= 'Z'; ref++)
+    int col = 0, letters = 0;
+    /* real refs are at most 3 letters ("XFD"); more means a malformed or
+     * hostile file, and unbounded accumulation would overflow */
+    for (; *ref >= 'A' && *ref <= 'Z' && letters < 4; ref++, letters++)
         col = col * 26 + (*ref - 'A' + 1);
-    return col - 1; /* 0-based */
+    return letters ? col - 1 : -1; /* 0-based */
 }
 
 /* ---- one worksheet → <table> --------------------------------------------- */
@@ -187,19 +190,18 @@ char *convert_xlsx(const source_file *src) {
     if (!mz_zip_reader_init_mem(&za, src->data, src->len, 0))
         return page_error(base, "Not a valid XLSX file",
                           "could not open ZIP container");
+    zcap zc;
+    zcap_init(&zc, &za);
 
     size_t wblen = 0, sslen = 0, rellen = 0;
-    char *wb = mz_zip_reader_extract_file_to_heap(&za, "xl/workbook.xml",
-                                                  &wblen, 0);
+    char *wb = zcap_extract(&zc, "xl/workbook.xml", &wblen);
     if (!wb) {
         mz_zip_reader_end(&za);
         return page_error(base, "Not a valid XLSX file",
-                          "xl/workbook.xml missing");
+                          "xl/workbook.xml missing or oversized");
     }
-    char *ss = mz_zip_reader_extract_file_to_heap(
-        &za, "xl/sharedStrings.xml", &sslen, 0);
-    char *rels = mz_zip_reader_extract_file_to_heap(
-        &za, "xl/_rels/workbook.xml.rels", &rellen, 0);
+    char *ss = zcap_extract(&zc, "xl/sharedStrings.xml", &sslen);
+    char *rels = zcap_extract(&zc, "xl/_rels/workbook.xml.rels", &rellen);
 
     strtab strs;
     strtab_parse(&strs, ss, sslen);
@@ -263,7 +265,7 @@ char *convert_xlsx(const source_file *src) {
                      i + 1);
 
         size_t shlen = 0;
-        char *sh = mz_zip_reader_extract_file_to_heap(&za, zpath, &shlen, 0);
+        char *sh = zcap_extract(&zc, zpath, &shlen);
         if (!sh)
             continue;
         sb_append(&out, "<h2>");

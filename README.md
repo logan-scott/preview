@@ -109,9 +109,9 @@ Notes on behavior:
 - Relative images in markdown are inlined as data URIs at convert time
   (the page is loaded from a string, so there is no base URL to resolve
   against).
-- Raw HTML inside markdown is passed through, matching local-file trust
-  semantics; `.html` files are navigated to directly so their relative
-  assets work.
+- Raw HTML inside markdown is rendered as inert text, not executed (see
+  Security model); `.html` files are navigated to directly so their
+  relative assets work.
 - Very large sources skip syntax highlighting (>400 KB); CSV stops at
   10,000 rows; PDF at 200 pages; XLSX at 5,000 rows/sheet.
 
@@ -136,7 +136,51 @@ the header-only webview library; everything else is C11. Assets in
 `assets/` are turned into C byte arrays at build time by `tools/embed.c`
 (see the Makefile), so the binary has no runtime file dependencies.
 
-### Adding a format
+## Security model
+
+`preview` is designed to open files from untrusted sources (a downloaded
+README, an emailed `.docx`) without letting them run code or exfiltrate
+data. The threat is a malicious document, not a malicious user.
+
+- **No script execution from documents.** Markdown is rendered with raw
+  HTML disabled, so an embedded `<script>` shows as literal text rather
+  than running. DOCX/XLSX/PPTX text is HTML-escaped on the way out.
+- **URL scheme allow-list.** Hyperlinks (markdown and DOCX) may only use
+  `http`, `https`, `mailto`, fragments, or relative paths. `javascript:`,
+  `data:`, `file:` and friends are rewritten to an inert `#blocked`
+  target. The check normalizes control characters and case first, so
+  `jav&#9;ascript:` doesn't slip through.
+- **Only images are inlined.** A document that references a local file is
+  embedded only if the bytes actually decode as a known image type; a
+  reference to `~/.ssh/id_rsa` or any non-image is dropped, so documents
+  can't fold arbitrary local files into the page.
+- **Content-Security-Policy.** Generated pages carry a restrictive CSP:
+  `default-src 'none'`, no `connect-src` (no fetch/XHR/WebSocket), no
+  `form-action`, no plugins, no `base-uri`. Even if an escaping bug ever
+  let markup through, it has no channel to phone home. Inline CSS/JS are
+  ours (the page is assembled from a trusted string); the Esc/keyboard
+  handlers are injected as WebKit user scripts, which are CSP-exempt by
+  design, so the policy doesn't break them.
+- **Bounded resource use on ZIP formats.** DOCX/XLSX/PPTX parts are
+  extracted against a 512 MB per-archive budget, so a zip bomb is refused
+  before it is inflated. Spreadsheet column references, page/row/sheet
+  counts, and image sizes are all capped.
+
+Known limitations (deliberate trade-offs, not oversights):
+
+- **Remote images load.** `img-src` permits `http(s)`, so a document that
+  references `https://tracker/pixel.png` will fetch it when displayed —
+  a tracking beacon that reveals the file was opened (and your IP), but
+  not the file's contents. Blocking this would break legitimate documents
+  that reference web images. Run offline if this matters.
+- **`.html` files are rendered with full trust.** An `.html` argument is
+  loaded directly (so its own relative assets and scripts work), *without*
+  the CSP above — treat opening one like opening it in a browser.
+- **PDF parsing runs in-process (mupdf).** A malformed PDF that could
+  exploit mupdf runs in `preview`'s address space. mupdf is widely
+  hardened, but PDFs get no sandbox here.
+
+## Adding a format
 
 1. Add a `FT_*` value in `src/detect.h`.
 2. Map its extension (and magic bytes if any) in `src/detect.c`.

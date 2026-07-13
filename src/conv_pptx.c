@@ -9,6 +9,7 @@
 #include "page.h"
 #include "str.h"
 #include "xmlmini.h"
+#include "ziputil.h"
 
 #define PPTX_MAX_SLIDES 200
 
@@ -78,7 +79,7 @@ static const char *pptx_mime(const uint8_t *d, size_t n) {
 
 /* Walk one slide: pull paragraph text out of a:p / a:t and images out of
  * a:blip. The title placeholder becomes the slide heading. */
-static void slide_to_html(sb *out, mz_zip_archive *za, const char *xml,
+static void slide_to_html(sb *out, zcap *za, const char *xml,
                           size_t len, const srel_list *rels) {
     xml_reader x;
     xml_init(&x, xml, len);
@@ -126,8 +127,7 @@ static void slide_to_html(sb *out, mz_zip_archive *za, const char *xml,
                     else
                         snprintf(zpath, sizeof(zpath), "ppt/slides/%s", tg);
                     size_t ilen = 0;
-                    void *img = mz_zip_reader_extract_file_to_heap(
-                        za, zpath, &ilen, 0);
+                    void *img = zcap_extract(za, zpath, &ilen);
                     if (img) {
                         const char *mime = pptx_mime(img, ilen);
                         if (mime) {
@@ -189,6 +189,8 @@ char *convert_pptx(const source_file *src) {
     if (!mz_zip_reader_init_mem(&za, src->data, src->len, 0))
         return page_error(base, "Not a valid PPTX file",
                           "could not open ZIP container");
+    zcap zc;
+    zcap_init(&zc, &za);
 
     sb out;
     sb_init(&out);
@@ -208,19 +210,17 @@ char *convert_pptx(const source_file *src) {
         snprintf(rpath, sizeof(rpath),
                  "ppt/slides/_rels/slide%d.xml.rels", i);
         size_t slen = 0, rlen = 0;
-        char *sxml =
-            mz_zip_reader_extract_file_to_heap(&za, spath, &slen, 0);
+        char *sxml = zcap_extract(&zc, spath, &slen);
         if (!sxml)
             break;
-        char *rxml =
-            mz_zip_reader_extract_file_to_heap(&za, rpath, &rlen, 0);
+        char *rxml = zcap_extract(&zc, rpath, &rlen);
 
         srel_list rels;
         srels_parse(&rels, rxml, rlen);
 
         sb_appendf(&out, "<div class=\"slideno\">%d</div>"
                          "<div class=\"slide\">", i);
-        slide_to_html(&out, &za, sxml, slen, &rels);
+        slide_to_html(&out, &zc, sxml, slen, &rels);
         sb_append(&out, "</div>");
         emitted++;
 

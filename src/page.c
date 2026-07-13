@@ -64,6 +64,23 @@ static const char BASE_CSS[] =
 
 void page_begin(sb *s, const char *title, unsigned flags) {
     sb_append(s, "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
+                 /* Defense in depth: the converters already strip scripts
+                  * and unsafe URL schemes, but if an escaping bug ever let
+                  * markup through, this CSP denies it a way out — no
+                  * network fetch/XHR/websocket, no form posts, no plugins,
+                  * no base-tag hijack. Inline style/script are ours (the
+                  * page is built from a trusted string); images may be
+                  * inline data URIs or remote (see README note on remote
+                  * image beacons). */
+                 "<meta http-equiv=\"Content-Security-Policy\" content=\""
+                 "default-src 'none';"
+                 "img-src data: https: http:;"
+                 "style-src 'unsafe-inline';"
+                 "script-src 'unsafe-inline';"
+                 "connect-src 'none';"
+                 "form-action 'none';"
+                 "base-uri 'none';"
+                 "object-src 'none'\">"
                  "<meta name=\"viewport\" "
                  "content=\"width=device-width,initial-scale=1\"><title>");
     sb_append_html(s, title, strlen(title));
