@@ -61,7 +61,9 @@ Invalid command-line usage.
 .SH "SECURITY"
 Documents are treated as untrusted: scripts embedded in Markdown are not
 executed, unsafe link schemes are neutralized, and only verified image
-data is inlined. See the project README for the full security model,
+data is inlined. PDFs are rendered in an isolated, syscall-sandboxed child
+process so a bug in the PDF engine cannot spawn programs or open network
+connections. See the project README for the full security model,
 including known limitations such as remote image loading.
 .SH "SEE ALSO"
 Project homepage: https://github.com/logan-scott/preview

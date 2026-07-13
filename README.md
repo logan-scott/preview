@@ -205,11 +205,14 @@ Known limitations (deliberate trade-offs, not oversights):
   the CSP above — treat opening one like opening it in a browser.
 
 PDFs are parsed by mupdf in an **isolated child process** with a CPU
-limit: a memory-corruption bug in mupdf can at worst crash that child,
-which `preview` reports as an error page rather than letting it touch the
-main process. (Set `PREVIEW_PDF_NOSANDBOX=1` to render in-process.) The
-child still shares the filesystem view of the main process; a syscall
-sandbox (seccomp / macOS sandbox) would be a further tightening.
+limit and a **syscall sandbox**: seccomp-BPF on Linux and a Seatbelt
+profile on macOS forbid the process from executing programs or opening
+network connections before it is handed a single byte of the PDF. So a
+memory-corruption bug in mupdf can at worst crash the child — which
+`preview` reports as an error page — and cannot spawn a shell or phone
+home from inside it. (Set `PREVIEW_PDF_NOSANDBOX=1` to render in-process,
+without either layer.) The child still shares the filesystem view of the
+main process, so a full filesystem jail would tighten it further.
 
 ## Adding a format
 

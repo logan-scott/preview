@@ -13,6 +13,7 @@
 #include "convert.h"
 #include "detect.h"
 #include "page.h"
+#include "sandbox.h"
 #include "str.h"
 
 #if defined(__APPLE__)
@@ -189,6 +190,8 @@ static int pdf_worker(const char *path) {
     uint8_t *data = read_entire_file(path, &len, &err);
     if (!data)
         return 1;
+    /* Confine the syscalls available before handing bytes to mupdf. */
+    sandbox_restrict();
     source_file src = {path, data, len, FT_PDF};
     char *html = pdf_render_inproc(&src);
     if (html)
@@ -198,9 +201,31 @@ static int pdf_worker(const char *path) {
     return 0;
 }
 
+/* Hidden self-test: apply the sandbox, then attempt to exec a program —
+ * the capability an exploit most wants and one both backends forbid. A
+ * working sandbox kills this process (Linux seccomp) or makes execve fail
+ * (macOS Seatbelt). If exec instead succeeds, this process is replaced by
+ * /usr/bin/true and exits 0, which the caller reads as "not blocked".
+ *   exit 2  no sandbox available (skip)
+ *   exit 4  exec blocked with an error
+ *   killed  exec blocked by termination (seccomp)
+ *   exit 0  NOT blocked (failure) */
+static int sandbox_selftest(void) {
+    if (!sandbox_restrict()) {
+        fprintf(stderr, "sandbox: unavailable on this platform\n");
+        return 2;
+    }
+    fprintf(stderr, "sandbox: applied\n"); /* an allowed syscall (write) */
+    execl("/usr/bin/true", "true", (char *)NULL);
+    execl("/bin/true", "true", (char *)NULL);
+    return 4; /* exec returned: blocked with an error */
+}
+
 int main(int argc, char **argv) {
     if (argc == 3 && strcmp(argv[1], "--render-pdf-worker") == 0)
         return pdf_worker(argv[2]);
+    if (argc == 2 && strcmp(argv[1], "--sandbox-selftest") == 0)
+        return sandbox_selftest();
 
     static char self_path[4096];
     if (resolve_self(self_path, sizeof(self_path)))
