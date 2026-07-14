@@ -7,9 +7,16 @@ aims to follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Windows support (MinGW/MSYS2 + WebView2; PDF via pdf.js), verified in CI.
+- New formats: Jupyter notebooks (`.ipynb`), OpenDocument
+  (`.odt`/`.ods`/`.odp`), and RTF.
 - File-manager integration: `make macos-app` builds a `Preview.app`
   bundle for "Open With"; `make install` installs a `preview.desktop`
   entry with MIME associations on Linux.
+- Prebuilt release binaries (macOS arm64/x64, Linux x64, Windows x64) and
+  a GitHub Release workflow.
+- Light/dark demo screenshots, `CHANGELOG.md`, `CONTRIBUTING.md`, issue/PR
+  templates, and a dependency-freshness check (`make check-deps`).
 
 ## [0.2.1] - 2026-07-13
 

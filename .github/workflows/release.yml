@@ -64,8 +64,43 @@ jobs:
             preview-*.tar.gz
             preview-*.tar.gz.sha256
 
+  # Windows build (MSYS2/MinGW + WebView2, pdf.js for PDF).
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc make python zip
+      - name: Fetch WebView2 SDK headers
+        run: |
+          curl -sL -o wv2.nupkg \
+            https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2792.45
+          python -c "import zipfile; zipfile.ZipFile('wv2.nupkg').extractall('wv2')"
+      - name: Build
+        run: make WEBVIEW2_INCLUDE="$(pwd)/wv2/build/native/include"
+      - name: Package
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          DIR="preview-${TAG}-windows-x64"
+          mkdir "$DIR"
+          cp preview.exe README.md LICENSE CHANGELOG.md "$DIR"/
+          zip -r "$DIR.zip" "$DIR"
+          sha256sum "$DIR.zip" > "$DIR.zip.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            preview-*.zip
+            preview-*.zip.sha256
+
   release:
-    needs: build
+    needs: [build, build-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

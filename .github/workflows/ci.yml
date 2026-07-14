@@ -60,11 +60,8 @@ jobs:
             CXX="c++ -fsanitize=address,undefined -fno-omit-frame-pointer"
 
   # Windows via MSYS2/MinGW and WebView2 (PDF through the pdf.js fallback).
-  # Marked experimental while the WebView2 build path is stabilized, so a
-  # failure here does not fail the overall run.
   windows:
     runs-on: windows-latest
-    continue-on-error: true
     defaults:
       run:
         shell: msys2 {0}

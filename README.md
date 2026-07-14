@@ -12,8 +12,8 @@ preview paper.pdf      # scrollable pages
 ```
 
 Everything is converted to HTML/CSS and displayed in the OS's built-in web
-view (WKWebView on macOS, WebKitGTK on Linux) — one rendering surface, one
-converter per file type.
+view (WKWebView on macOS, WebKitGTK on Linux, WebView2 on Windows) — one
+rendering surface, one converter per file type.
 
 <p align="center">
   <img src="docs/demo-light.png" alt="Markdown rendered in light mode" width="46%">
@@ -70,6 +70,21 @@ sudo pacman -S base-devel webkit2gtk-4.1 libmupdf
 
 make
 ```
+
+### Windows
+
+Build under [MSYS2](https://www.msys2.org/) (MinGW-w64). The window uses
+WebView2 (the Edge runtime, preinstalled on Windows 10/11); PDFs render via
+the bundled pdf.js. You need the WebView2 SDK headers — grab them from the
+`Microsoft.Web.WebView2` NuGet package and point the build at them:
+
+```sh
+pacman -S mingw-w64-x86_64-gcc make python
+# extract the NuGet package's build/native/include somewhere, then:
+make WEBVIEW2_INCLUDE=/path/to/webview2/build/native/include
+```
+
+This produces `preview.exe`.
 
 ### PDF support: mupdf or the pdf.js fallback
 
