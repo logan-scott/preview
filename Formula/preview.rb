@@ -12,12 +12,9 @@
 class Preview < Formula
   desc "Cross-platform CLI document viewer"
   homepage "https://github.com/logan-scott/preview"
-  url "https://github.com/logan-scott/preview/archive/refs/tags/v0.2.1.tar.gz"
-  sha256 "d07021a7afa22d92732ac5562a093838908c91df87b33ca85c47dd08b9a2776d"
+  url "https://github.com/logan-scott/preview/archive/refs/tags/v0.3.0.tar.gz"
+  sha256 "71c09d444679c1d490f99b58eacf81b31992e019e248b232361ba945b9eb5b00"
   license "MIT"
-  # bumped for the build-only fix that links mupdf (the v0.2.1 source is
-  # unchanged); brew upgrade rebuilds on the new revision
-  revision 1
   head "https://github.com/logan-scott/preview.git", branch: "main"
 
   depends_on "pkg-config" => :build

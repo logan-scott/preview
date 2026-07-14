@@ -123,10 +123,11 @@ are MIT/BSD.
 
 ### Prebuilt binaries
 
-Each tagged release attaches portable binaries for macOS (arm64 and x64)
-and Linux (x64) on the [Releases](https://github.com/logan-scott/preview/releases)
-page. Download the tarball for your platform, verify it, and drop the
-binary on your `PATH`:
+Each tagged release attaches portable binaries for macOS (universal —
+arm64 and x64), Linux (x64), and Windows (x64) on the
+[Releases](https://github.com/logan-scott/preview/releases) page. Download
+the archive for your platform, verify it, and drop the binary on your
+`PATH`:
 
 ```sh
 tar xzf preview-*.tar.gz && cd preview-*
