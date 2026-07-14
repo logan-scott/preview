@@ -3,3 +3,4 @@ preview
 *.o
 *.dSYM/
 test/fixtures/
+Preview.app/

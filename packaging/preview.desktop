@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Preview
+GenericName=Document Viewer
+Comment=Open documents in a native viewer window
+Exec=preview %f
+Icon=preview
+Terminal=false
+Categories=Utility;Viewer;Office;Graphics;
+NoDisplay=false
+MimeType=text/markdown;text/plain;text/csv;text/tab-separated-values;application/json;text/html;application/pdf;image/png;image/jpeg;image/gif;image/webp;image/bmp;image/svg+xml;image/x-icon;image/avif;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;application/vnd.openxmlformats-officedocument.presentationml.presentation;application/vnd.oasis.opendocument.text;application/vnd.oasis.opendocument.spreadsheet;application/vnd.oasis.opendocument.presentation;

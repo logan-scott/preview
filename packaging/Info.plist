@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>Preview</string>
+  <key>CFBundleDisplayName</key>
+  <string>Preview</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.loganscott.preview</string>
+  <key>CFBundleExecutable</key>
+  <string>PreviewLauncher</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.2.1</string>
+  <key>CFBundleVersion</key>
+  <string>0.2.1</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>10.13</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Document</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>public.pdf</string>
+        <string>net.daringfireball.markdown</string>
+        <string>public.plain-text</string>
+        <string>public.source-code</string>
+        <string>public.json</string>
+        <string>public.comma-separated-values-text</string>
+        <string>public.html</string>
+        <string>public.png</string>
+        <string>public.jpeg</string>
+        <string>com.compuserve.gif</string>
+        <string>org.webmproject.webp</string>
+        <string>com.microsoft.bmp</string>
+        <string>public.svg-image</string>
+        <string>org.openxmlformats.wordprocessingml.document</string>
+        <string>org.openxmlformats.spreadsheetml.sheet</string>
+        <string>org.openxmlformats.presentationml.presentation</string>
+        <string>org.oasis-open.opendocument.text</string>
+        <string>org.oasis-open.opendocument.spreadsheet</string>
+        <string>org.oasis-open.opendocument.presentation</string>
+      </array>
+    </dict>
+  </array>
+</dict>
+</plist>

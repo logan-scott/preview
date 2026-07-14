@@ -121,6 +121,26 @@ until you tap it.) The formula depends on mupdf for PDF support and
 builds against the system web view. `brew upgrade preview` picks up new
 tagged releases.
 
+### Open documents from your file manager
+
+To open files by double-clicking or via "Open With":
+
+**macOS** — build the app bundle and drop it in Applications:
+
+```sh
+make macos-app
+cp -r Preview.app /Applications/
+```
+
+Then right-click a file → Open With → Preview (or set it as the default
+for a type in Get Info). The bundle wraps the CLI with a small launcher
+that forwards the opened document to `preview`.
+
+**Linux** — `make install` also installs a `.desktop` entry with MIME
+associations, so `preview` appears in your file manager's "Open With"
+menu. Run `update-desktop-database ~/.local/share/applications` (or the
+system path) if the association doesn't show up immediately.
+
 ## Usage
 
 ```

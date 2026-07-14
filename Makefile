@@ -141,12 +141,31 @@ install: $(BIN)
 	$(INSTALL) -m 755 $(BIN) $(DESTDIR)$(BINDIR)/$(BIN)
 	$(INSTALL) -d $(DESTDIR)$(MANDIR)
 	$(INSTALL) -m 644 man/preview.1 $(DESTDIR)$(MANDIR)/preview.1
+ifeq ($(UNAME_S),Linux)
+	$(INSTALL) -d $(DESTDIR)$(PREFIX)/share/applications
+	$(INSTALL) -m 644 packaging/preview.desktop \
+	  $(DESTDIR)$(PREFIX)/share/applications/preview.desktop
+endif
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/$(BIN)
 	rm -f $(DESTDIR)$(MANDIR)/preview.1
+	rm -f $(DESTDIR)$(PREFIX)/share/applications/preview.desktop
+
+# macOS: assemble a double-clickable Preview.app that opens documents via
+# "Open With". Bundles the CLI binary and a tiny launcher (see
+# packaging/macos_launcher.m). Drag the result to /Applications.
+APP := Preview.app
+macos-app: $(BIN)
+	rm -rf $(APP)
+	mkdir -p $(APP)/Contents/MacOS
+	cp packaging/Info.plist $(APP)/Contents/Info.plist
+	cp $(BIN) $(APP)/Contents/MacOS/preview
+	$(CC) -O2 -framework Cocoa -o $(APP)/Contents/MacOS/PreviewLauncher \
+	  packaging/macos_launcher.m
+	@echo "Built $(APP). Try: open $(APP) --args <file>, or drag to /Applications."
 
 clean:
-	rm -rf $(BUILD) $(BIN) test/fixtures
+	rm -rf $(BUILD) $(BIN) test/fixtures $(APP)
 
-.PHONY: all clean test install uninstall
+.PHONY: all clean test install uninstall macos-app
