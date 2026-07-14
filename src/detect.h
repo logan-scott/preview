@@ -20,6 +20,7 @@ typedef enum {
     FT_DOCX,
     FT_PPTX,
     FT_XLSX,
+    FT_ODF,       /* OpenDocument: odt / ods / odp */
     FT_BINARY,    /* unrenderable */
 } filetype;
 

@@ -39,6 +39,7 @@ converter per file type.
 | DOCX | OOXML → HTML (paragraphs, headings, b/i/u/strike, sub/superscript, hyperlinks, nested lists, tables incl. colspan, inline images) |
 | XLSX | one table per sheet; shared strings and cached formula values |
 | PPTX | one card per slide: title, text, images (no positional layout) |
+| OpenDocument (`.odt .ods .odp`) | ODF → HTML: headings, styled text, lists, tables, images |
 
 ## Building
 

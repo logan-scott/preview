@@ -266,6 +266,47 @@ def zip_bomb():
         z.writestr("word/numbering.xml", b"\x00" * (700 * 1024 * 1024))
 
 
+def odt():
+    NS = ('xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" '
+          'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" '
+          'xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" '
+          'xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" '
+          'xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" '
+          'xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" '
+          'xmlns:xlink="http://www.w3.org/1999/xlink"')
+    content = (f'<?xml version="1.0"?><office:document-content {NS}>'
+               '<office:automatic-styles>'
+               '<style:style style:name="T1" style:family="text">'
+               '<style:text-properties fo:font-weight="bold"/></style:style>'
+               '<style:style style:name="T2" style:family="text">'
+               '<style:text-properties fo:font-style="italic"/></style:style>'
+               '</office:automatic-styles>'
+               '<office:body><office:text>'
+               '<text:h text:outline-level="1">ODT Heading</text:h>'
+               '<text:p>Plain and <text:span text:style-name="T1">bold</text:span>'
+               ' and <text:span text:style-name="T2">italic</text:span>.</text:p>'
+               '<text:list><text:list-item><text:p>item one</text:p></text:list-item>'
+               '<text:list-item><text:p>item two</text:p></text:list-item></text:list>'
+               '<table:table><table:table-row>'
+               '<table:table-cell><text:p>cell A</text:p></table:table-cell>'
+               '<table:table-cell><text:p>cell B</text:p></table:table-cell>'
+               '</table:table-row></table:table>'
+               '</office:text></office:body></office:document-content>')
+    manifest = ('<?xml version="1.0"?><manifest:manifest '
+                'xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">'
+                '<manifest:file-entry manifest:full-path="/" '
+                'manifest:media-type="application/vnd.oasis.opendocument.text"/>'
+                '</manifest:manifest>')
+    p = os.path.join(OUT, "doc.odt")
+    with zipfile.ZipFile(p, "w", zipfile.ZIP_DEFLATED) as z:
+        # the mimetype entry must be first and stored (uncompressed)
+        zi = zipfile.ZipInfo("mimetype")
+        zi.compress_type = zipfile.ZIP_STORED
+        z.writestr(zi, "application/vnd.oasis.opendocument.text")
+        z.writestr("content.xml", content)
+        z.writestr("META-INF/manifest.xml", manifest)
+
+
 def ipynb():
     nb = {
         "nbformat": 4, "nbformat_minor": 5,
@@ -300,6 +341,7 @@ xlsx()
 pptx()
 pdf()
 ipynb()
+odt()
 zip_bomb()
 write("corrupt.pdf", "%PDF-1.4 this is not a real pdf")
 write("bad.docx", b"PK\x03\x04 not actually a zip archive")

@@ -66,6 +66,7 @@ static const ext_map EXT_TABLE[] = {
     {"docx", FT_DOCX},
     {"pptx", FT_PPTX},
     {"xlsx", FT_XLSX},
+    {"odt", FT_ODF},       {"ods", FT_ODF},          {"odp", FT_ODF},
 
     /* common text/source extensions; anything else falls through to the
      * printable-bytes heuristic, so this list is a fast path, not a gate */
@@ -112,8 +113,9 @@ static filetype sniff_zip(const uint8_t *data, size_t len) {
         {"word/document.xml", FT_DOCX},
         {"ppt/presentation.xml", FT_PPTX},
         {"xl/workbook.xml", FT_XLSX},
+        {"vnd.oasis.opendocument", FT_ODF}, /* from the mimetype entry */
     };
-    for (size_t m = 0; m < 3; m++) {
+    for (size_t m = 0; m < sizeof(marks) / sizeof(marks[0]); m++) {
         size_t nlen = strlen(marks[m].needle);
         if (len < nlen)
             continue;
@@ -194,6 +196,7 @@ const char *filetype_name(filetype t) {
     case FT_DOCX:      return "docx";
     case FT_PPTX:      return "pptx";
     case FT_XLSX:      return "xlsx";
+    case FT_ODF:       return "opendocument";
     case FT_BINARY:    return "binary";
     default:           return "unknown";
     }

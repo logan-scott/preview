@@ -109,6 +109,16 @@ has "xlsx" "<td>TRUE</td>"
 has "xlsx" "<td>inline text</td>"
 has "xlsx" "<td>2025-01-01</td>"   # serial 45658, date-styled cell
 
+# --- odt (OpenDocument) -----------------------------------------------------
+render doc.odt
+has "odt" "<h1>ODT Heading</h1>"
+has "odt" "font-weight:bold"
+has "odt" "font-style:italic"
+has "odt" "<li><p>item one</p></li>"
+has "odt" "<td><p>cell A</p></td>"
+detect=$("$PREVIEW" --dump-html "$FIX/doc.odt" | grep -c "Not a valid")
+[ "$detect" = "0" ] && ok || bad "odt: not detected as OpenDocument"
+
 # --- ipynb (Jupyter notebook) -----------------------------------------------
 render notebook.ipynb
 has "ipynb" "<h1>Notebook</h1>"                 # markdown cell rendered

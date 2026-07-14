@@ -7,6 +7,7 @@
 
 #include "conv_docx.h"
 #include "conv_ipynb.h"
+#include "conv_odf.h"
 #include "conv_pdf.h"
 #include "conv_pptx.h"
 #include "conv_xlsx.h"
@@ -583,6 +584,7 @@ static const struct {
     {FT_DOCX, convert_docx},
     {FT_PPTX, convert_pptx},
     {FT_XLSX, convert_xlsx},
+    {FT_ODF, convert_odf},
 };
 
 char *convert_to_html(const source_file *src) {
