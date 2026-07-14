@@ -227,6 +227,78 @@ static int sandbox_selftest(void) {
 
 #endif /* !_WIN32 */
 
+/* --- config file ------------------------------------------------------- */
+
+typedef struct {
+    int width, height;
+    int no_remote;
+    int watch;
+} config;
+
+static void config_path(char *buf, size_t cap) {
+    buf[0] = '\0';
+#if defined(_WIN32)
+    const char *appdata = getenv("APPDATA");
+    if (appdata)
+        snprintf(buf, cap, "%s\\preview\\config", appdata);
+#else
+    const char *xdg = getenv("XDG_CONFIG_HOME");
+    const char *home = getenv("HOME");
+    if (xdg && xdg[0])
+        snprintf(buf, cap, "%s/preview/config", xdg);
+    else if (home)
+        snprintf(buf, cap, "%s/.config/preview/config", home);
+#endif
+}
+
+static int truthy(const char *v) {
+    return strcmp(v, "true") == 0 || strcmp(v, "1") == 0 ||
+           strcmp(v, "yes") == 0 || strcmp(v, "on") == 0;
+}
+
+/* Read ~/.config/preview/config (key = value, # comments). Missing file or
+ * keys leave the defaults untouched. */
+static void load_config(config *c) {
+    c->width = 960;
+    c->height = 720;
+    c->no_remote = 0;
+    c->watch = 0;
+    char path[4096];
+    config_path(path, sizeof(path));
+    if (!path[0])
+        return;
+    FILE *f = fopen(path, "r");
+    if (!f)
+        return;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        char *hash = strchr(line, '#');
+        if (hash)
+            *hash = '\0';
+        char *eq = strchr(line, '=');
+        if (!eq)
+            continue;
+        *eq = '\0';
+        char key[64] = "", val[128] = "";
+        sscanf(line, " %63s", key);
+        sscanf(eq + 1, " %127s", val);
+        if (strcmp(key, "width") == 0) {
+            int w = atoi(val);
+            if (w >= 200 && w <= 10000)
+                c->width = w;
+        } else if (strcmp(key, "height") == 0) {
+            int h = atoi(val);
+            if (h >= 200 && h <= 10000)
+                c->height = h;
+        } else if (strcmp(key, "no_remote") == 0) {
+            c->no_remote = truthy(val);
+        } else if (strcmp(key, "watch") == 0) {
+            c->watch = truthy(val);
+        }
+    }
+    fclose(f);
+}
+
 int main(int argc, char **argv) {
 #if !defined(_WIN32)
     if (argc == 3 && strcmp(argv[1], "--render-pdf-worker") == 0)
@@ -239,10 +311,14 @@ int main(int argc, char **argv) {
         preview_self = self_path;
 #endif
 
+    config cfg;
+    load_config(&cfg);
+
     const char *file = NULL;
     int dump_html = 0;
-    int watch = 0;
+    int watch = cfg.watch;          /* config default; --watch forces on */
     int close_after = -1;
+    page_offline = cfg.no_remote;   /* config default; --no-remote forces on */
 
     for (int i = 1; i < argc; i++) {
         const char *a = argv[i];
@@ -312,7 +388,7 @@ int main(int argc, char **argv) {
         return 1;
     }
     webview_set_title(w, path_basename(file));
-    webview_set_size(w, 960, 720, WEBVIEW_HINT_NONE);
+    webview_set_size(w, cfg.width, cfg.height, WEBVIEW_HINT_NONE);
     webview_bind(w, "previewQuit", on_quit, w);
     /* Esc closes; space/arrows scroll natively. Runs on every page load. */
     webview_init(w,

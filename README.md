@@ -202,6 +202,20 @@ preview [options] <file>
 With `--watch`, the window reloads automatically whenever the file is
 saved — handy for editing Markdown or code alongside a live preview.
 
+### Config file
+
+Defaults can be set in `~/.config/preview/config` (`$XDG_CONFIG_HOME` is
+honored; `%APPDATA%\preview\config` on Windows). Command-line flags
+override it.
+
+```ini
+# ~/.config/preview/config
+width  = 1100      # window size
+height = 800
+no_remote = true   # block remote images by default
+watch  = false     # re-render on file changes by default
+```
+
 Keys in the viewer window: **Esc** closes, **space / arrows / PgUp /
 PgDn** scroll. The color scheme follows the OS light/dark setting.
 
