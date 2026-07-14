@@ -1,0 +1,97 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build a release for (e.g. v0.3.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  # Build portable binaries. These use the pdf.js fallback (NO_PDF) rather
+  # than mupdf, so a downloaded binary is self-contained — its only dynamic
+  # dependency is the system web view. Homebrew users still get the native
+  # mupdf path via the formula.
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            asset: macos-arm64
+          - os: macos-13
+            asset: macos-x64
+          - os: ubuntu-latest
+            asset: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config \
+            libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Build (portable, pdf.js fallback)
+        run: make NO_PDF=1
+
+      - name: Smoke test
+        run: |
+          ./preview --version
+          make NO_PDF=1 test
+
+      - name: Package
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          DIR="preview-${TAG}-${{ matrix.asset }}"
+          mkdir "$DIR"
+          cp preview README.md LICENSE CHANGELOG.md "$DIR"/
+          mkdir -p "$DIR/man"
+          cp man/preview.1 "$DIR/man/"
+          tar czf "$DIR.tar.gz" "$DIR"
+          shasum -a 256 "$DIR.tar.gz" > "$DIR.tar.gz.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: |
+            preview-*.tar.gz
+            preview-*.tar.gz.sha256
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VER="${TAG#v}"
+          awk -v v="$VER" '
+            /^## \[/ { if (p) exit }
+            index($0, "[" v "]") { p = 1 }
+            p { print }
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Release $TAG" > notes.md
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          gh release create "$TAG" dist/*.tar.gz dist/*.sha256 \
+            --title "preview $TAG" \
+            --notes-file notes.md \
+            || gh release upload "$TAG" dist/*.tar.gz dist/*.sha256 --clobber

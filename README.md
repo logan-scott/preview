@@ -94,6 +94,26 @@ are MIT/BSD.
 
 ## Installing
 
+### Prebuilt binaries
+
+Each tagged release attaches portable binaries for macOS (arm64 and x64)
+and Linux (x64) on the [Releases](https://github.com/logan-scott/preview/releases)
+page. Download the tarball for your platform, verify it, and drop the
+binary on your `PATH`:
+
+```sh
+tar xzf preview-*.tar.gz && cd preview-*
+./preview --version
+sudo cp preview /usr/local/bin/
+```
+
+These binaries render PDFs via the bundled pdf.js, so they are
+self-contained — their only runtime dependency is the system web view
+(WebKit on macOS; install `libwebkit2gtk` on Linux). For native mupdf PDF
+rendering, use Homebrew or build from source.
+
+### From source
+
 ```sh
 make
 sudo make install                 # /usr/local/bin/preview + man page
