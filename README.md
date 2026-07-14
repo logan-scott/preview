@@ -32,6 +32,7 @@ converter per file type.
 | Images (`.tga .psd .hdr .pnm .ppm .pgm`) | decoded with stb_image |
 | Plain text / source code | `<pre>` with syntax highlighting |
 | JSON | pretty-printed |
+| Jupyter (`.ipynb`) | markdown + highlighted code cells with outputs |
 | CSV / TSV | HTML table |
 | HTML | rendered directly |
 | PDF | mupdf renders pages to PNG (first 200 pages); falls back to bundled pdf.js when built without mupdf |

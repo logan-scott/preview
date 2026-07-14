@@ -5,3 +5,4 @@ miniz: 77d0dce (3.1.2)
 
 highlight.js: 11.11.1 (BSD-3)
 pdf.js: 3.11.174 (Apache-2.0)
+cJSON: 1.7.19 (MIT)

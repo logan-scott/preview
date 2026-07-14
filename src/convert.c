@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "conv_docx.h"
+#include "conv_ipynb.h"
 #include "conv_pdf.h"
 #include "conv_pptx.h"
 #include "conv_xlsx.h"
@@ -573,6 +574,7 @@ static const struct {
     {FT_MARKDOWN, convert_markdown},
     {FT_TEXT, convert_text},
     {FT_JSON, convert_json},
+    {FT_IPYNB, convert_ipynb},
     {FT_CSV, convert_csv},
     {FT_IMAGE, convert_image},
     {FT_IMAGE_STB, convert_image_stb},

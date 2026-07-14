@@ -11,6 +11,7 @@ typedef enum {
     FT_TEXT,      /* plain text and source code */
     FT_MARKDOWN,
     FT_JSON,
+    FT_IPYNB, /* Jupyter notebook (JSON) */
     FT_CSV,
     FT_IMAGE,     /* formats the browser engine decodes natively */
     FT_IMAGE_STB, /* formats needing stb_image (tga, psd, hdr, pnm...) */

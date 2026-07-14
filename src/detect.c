@@ -48,6 +48,8 @@ static const ext_map EXT_TABLE[] = {
 
     {"json", FT_JSON},     {"jsonl", FT_JSON},        {"geojson", FT_JSON},
 
+    {"ipynb", FT_IPYNB},
+
     {"csv", FT_CSV},       {"tsv", FT_CSV},
 
     {"png", FT_IMAGE},     {"jpg", FT_IMAGE},         {"jpeg", FT_IMAGE},
@@ -183,6 +185,7 @@ const char *filetype_name(filetype t) {
     case FT_TEXT:      return "text";
     case FT_MARKDOWN:  return "markdown";
     case FT_JSON:      return "json";
+    case FT_IPYNB:     return "notebook";
     case FT_CSV:       return "csv";
     case FT_IMAGE:     return "image";
     case FT_IMAGE_STB: return "image";

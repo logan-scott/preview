@@ -109,6 +109,18 @@ has "xlsx" "<td>TRUE</td>"
 has "xlsx" "<td>inline text</td>"
 has "xlsx" "<td>2025-01-01</td>"   # serial 45658, date-styled cell
 
+# --- ipynb (Jupyter notebook) -----------------------------------------------
+render notebook.ipynb
+has "ipynb" "<h1>Notebook</h1>"                 # markdown cell rendered
+has "ipynb" "<strong>markdown</strong>"
+has "ipynb" "In [1]:"                            # code prompt
+has "ipynb" "language-python"
+has "ipynb" "print(&#39;hello&#39;)"             # source escaped
+has "ipynb" "hello"                              # stream output
+has "ipynb" "ZeroDivisionError"                  # error traceback
+has "ipynb" "nb-err"
+hasnt_re "ipynb" $'\x1b'                          # ANSI stripped from traceback
+
 # --- pptx -------------------------------------------------------------------
 render deck.pptx
 has "pptx" "<h2>First Slide</h2>"

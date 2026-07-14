@@ -266,10 +266,40 @@ def zip_bomb():
         z.writestr("word/numbering.xml", b"\x00" * (700 * 1024 * 1024))
 
 
+def ipynb():
+    nb = {
+        "nbformat": 4, "nbformat_minor": 5,
+        "metadata": {"language_info": {"name": "python"}},
+        "cells": [
+            {"cell_type": "markdown",
+             "source": ["# Notebook\n", "\n", "Some **markdown** text."]},
+            {"cell_type": "code", "execution_count": 1,
+             "source": ["print('hello')\n", "x = 2 + 2"],
+             "outputs": [
+                 {"output_type": "stream", "name": "stdout",
+                  "text": ["hello\n"]},
+                 {"output_type": "execute_result", "execution_count": 1,
+                  "data": {"text/plain": ["4"]}},
+             ]},
+            {"cell_type": "code", "execution_count": 2,
+             "source": ["1/0"],
+             "outputs": [
+                 {"output_type": "error", "ename": "ZeroDivisionError",
+                  "evalue": "division by zero",
+                  "traceback": [
+                      "[31mZeroDivisionError[0m: division by zero"]},
+             ]},
+        ],
+    }
+    import json
+    write("notebook.ipynb", json.dumps(nb))
+
+
 docx()
 xlsx()
 pptx()
 pdf()
+ipynb()
 zip_bomb()
 write("corrupt.pdf", "%PDF-1.4 this is not a real pdf")
 write("bad.docx", b"PK\x03\x04 not actually a zip archive")

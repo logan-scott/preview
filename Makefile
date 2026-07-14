@@ -69,15 +69,18 @@ endif
 
 C_SRCS   := src/main.c src/detect.c src/str.c src/page.c src/convert.c \
             src/conv_pdf.c src/conv_docx.c src/conv_xlsx.c src/conv_pptx.c \
+            src/conv_ipynb.c \
             src/xmlmini.c src/ziputil.c src/sandbox.c src/stb_impl.c
 MD4C_SRCS := vendor/md4c/md4c.c vendor/md4c/md4c-html.c vendor/md4c/entity.c
 MINIZ_SRCS:= vendor/miniz/miniz.c vendor/miniz/miniz_zip.c \
              vendor/miniz/miniz_tdef.c vendor/miniz/miniz_tinfl.c
+CJSON_SRCS:= vendor/cjson/cJSON.c
 CXX_SRCS := src/webview_impl.cc
 
 OBJS := $(C_SRCS:src/%.c=$(BUILD)/%.o) \
         $(MD4C_SRCS:vendor/md4c/%.c=$(BUILD)/md4c_%.o) \
         $(MINIZ_SRCS:vendor/miniz/%.c=$(BUILD)/mz_%.o) \
+        $(CJSON_SRCS:vendor/cjson/%.c=$(BUILD)/cjson_%.o) \
         $(CXX_SRCS:src/%.cc=$(BUILD)/%.oo)
 
 ASSET_HDRS := $(BUILD)/asset_hljs_js.h $(BUILD)/asset_hljs_css.h
@@ -96,6 +99,9 @@ $(BUILD)/md4c_%.o: vendor/md4c/%.c | $(BUILD)
 
 $(BUILD)/mz_%.o: vendor/miniz/%.c | $(BUILD)
 	$(CC) $(CFLAGS) -Ivendor/miniz -c -o $@ $<
+
+$(BUILD)/cjson_%.o: vendor/cjson/%.c | $(BUILD)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(BUILD)/%.oo: src/%.cc | $(BUILD)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
