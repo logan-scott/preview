@@ -130,7 +130,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          gh release create "$TAG" dist/*.tar.gz dist/*.sha256 \
+          gh release create "$TAG" dist/*.tar.gz dist/*.zip dist/*.sha256 \
             --title "preview $TAG" \
             --notes-file notes.md \
-            || gh release upload "$TAG" dist/*.tar.gz dist/*.sha256 --clobber
+            || gh release upload "$TAG" dist/*.tar.gz dist/*.zip dist/*.sha256 --clobber
