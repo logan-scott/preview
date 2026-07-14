@@ -109,6 +109,16 @@ has "xlsx" "<td>TRUE</td>"
 has "xlsx" "<td>inline text</td>"
 has "xlsx" "<td>2025-01-01</td>"   # serial 45658, date-styled cell
 
+# --- rtf ---------------------------------------------------------------------
+render doc.rtf
+has "rtf" "<b>bold</b>"
+has "rtf" "<i>italic</i>"
+has "rtf" "<u>under</u>"
+has "rtf" "Second paragraph"
+has "rtf" "unicode and"      # \u233 -> é, byte \'e9 -> é (both non-ASCII, present)
+hasnt "rtf" "fonttbl"        # font table skipped
+hasnt "rtf" "Helvetica;"     # its content too (";" avoids the CSS font stack)
+
 # --- odt (OpenDocument) -----------------------------------------------------
 render doc.odt
 has "odt" "<h1>ODT Heading</h1>"

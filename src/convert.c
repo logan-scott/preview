@@ -10,6 +10,7 @@
 #include "conv_odf.h"
 #include "conv_pdf.h"
 #include "conv_pptx.h"
+#include "conv_rtf.h"
 #include "conv_xlsx.h"
 #include "md4c-html.h"
 #include "page.h"
@@ -585,6 +586,7 @@ static const struct {
     {FT_PPTX, convert_pptx},
     {FT_XLSX, convert_xlsx},
     {FT_ODF, convert_odf},
+    {FT_RTF, convert_rtf},
 };
 
 char *convert_to_html(const source_file *src) {

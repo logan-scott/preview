@@ -67,6 +67,7 @@ static const ext_map EXT_TABLE[] = {
     {"pptx", FT_PPTX},
     {"xlsx", FT_XLSX},
     {"odt", FT_ODF},       {"ods", FT_ODF},          {"odp", FT_ODF},
+    {"rtf", FT_RTF},
 
     /* common text/source extensions; anything else falls through to the
      * printable-bytes heuristic, so this list is a fast path, not a gate */
@@ -129,6 +130,8 @@ static filetype sniff_zip(const uint8_t *data, size_t len) {
 static filetype type_from_magic(const uint8_t *d, size_t n) {
     if (starts_with(d, n, "%PDF-", 5))
         return FT_PDF;
+    if (starts_with(d, n, "{\\rtf", 5))
+        return FT_RTF;
     if (starts_with(d, n, "\x89PNG\r\n\x1a\n", 8))
         return FT_IMAGE;
     if (starts_with(d, n, "\xff\xd8\xff", 3))
@@ -197,6 +200,7 @@ const char *filetype_name(filetype t) {
     case FT_PPTX:      return "pptx";
     case FT_XLSX:      return "xlsx";
     case FT_ODF:       return "opendocument";
+    case FT_RTF:       return "rtf";
     case FT_BINARY:    return "binary";
     default:           return "unknown";
     }

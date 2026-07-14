@@ -336,6 +336,11 @@ def ipynb():
     write("notebook.ipynb", json.dumps(nb))
 
 
+write("doc.rtf",
+      "{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Helvetica;}}"
+      "Plain \\b bold\\b0  and \\i italic\\i0  and \\ul under\\ulnone .\\par "
+      "Second paragraph with \\u233 ? unicode and \\'e9 byte.}")
+
 docx()
 xlsx()
 pptx()
