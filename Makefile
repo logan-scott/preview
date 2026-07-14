@@ -1,12 +1,28 @@
 # preview — cross-platform document viewer
 #
-# macOS: clang + WebKit framework (no extra deps)
-# Linux: gcc/clang + WebKitGTK (see README for package names)
+# macOS:   clang + WebKit framework (no extra deps)
+# Linux:   gcc/clang + WebKitGTK (see README for package names)
+# Windows: MinGW-w64 (MSYS2) + WebView2 (built-in loader); PDF via pdf.js
 
 CC      ?= cc
 CXX     ?= c++
 BUILD   := build
-BIN     := preview
+
+UNAME_S := $(shell uname -s)
+# Windows under MSYS2/MinGW: PDFs render via pdf.js (no mupdf), and the
+# binary carries the .exe suffix.
+ifneq (,$(findstring MINGW,$(UNAME_S)))
+  WINDOWS := 1
+endif
+ifneq (,$(findstring MSYS,$(UNAME_S)))
+  WINDOWS := 1
+endif
+ifdef WINDOWS
+  NO_PDF := 1
+  EXE    := .exe
+endif
+
+BIN     := preview$(EXE)
 
 # install layout (override PREFIX for a user-local install, e.g.
 # `make install PREFIX=$HOME/.local`; DESTDIR is honored for packaging)
@@ -23,8 +39,6 @@ CFLAGS  += -std=c11 $(WARN) -O2 -Ivendor -Ivendor/md4c -Isrc -I$(BUILD) \
            -D_DEFAULT_SOURCE -DMINIZ_NO_ZLIB_APIS
 CXXFLAGS+= -std=c++14 $(WARN) -O2 -Ivendor
 LDLIBS  +=
-
-UNAME_S := $(shell uname -s)
 
 # --- PDF support (mupdf, with a pdf.js fallback) ---
 # Resolution order: NO_PDF=1 skips mupdf; MUPDF_PREFIX=<dir> points at an
@@ -52,7 +66,12 @@ ifeq ($(HAVE_PDF),)
   $(warning mupdf not found: PDFs will render via the bundled pdf.js fallback. For native rendering install mupdf (macOS: brew install mupdf | Debian/Ubuntu: apt install libmupdf-dev) or set MUPDF_PREFIX=<dir>.)
 endif
 
-ifeq ($(UNAME_S),Darwin)
+ifdef WINDOWS
+  # WebView2 with the header's built-in loader; C++17 for its COM usage.
+  CXXFLAGS += -DWEBVIEW_MSWEBVIEW2_BUILTIN -std=c++17
+  LDLIBS   += -ladvapi32 -lole32 -loleaut32 -lshell32 -lshlwapi -luser32 \
+              -lversion -luuid -lgdi32
+else ifeq ($(UNAME_S),Darwin)
   LDLIBS += -framework WebKit -ldl
 else ifeq ($(UNAME_S),Linux)
   # Pick the newest WebKitGTK present: GTK4/webkitgtk-6.0, then GTK3/4.1, then GTK3/4.0

@@ -1,14 +1,12 @@
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <time.h>
-#include <unistd.h>
 
 #define WEBVIEW_HEADER
 #include "webview/webview.h"
 
+#include "compat.h"
 #include "conv_pdf.h"
 #include "convert.h"
 #include "detect.h"
@@ -16,6 +14,9 @@
 #include "sandbox.h"
 #include "str.h"
 
+#if !defined(_WIN32)
+#include <unistd.h>
+#endif
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
 #endif
@@ -75,8 +76,7 @@ static void on_quit(const char *id, const char *req, void *arg) {
 
 static void *closer_thread(void *p) {
     closer_args *a = p;
-    struct timespec ts = {a->ms / 1000, (long)(a->ms % 1000) * 1000000L};
-    nanosleep(&ts, NULL);
+    preview_sleep_ms(a->ms);
     webview_dispatch(a->w, do_terminate, NULL);
     return NULL;
 }
@@ -101,7 +101,7 @@ static render_result build_render(const char *file) {
     filetype ft = detect_filetype(file, data, len);
     if (ft == FT_HTML) {
         char real[4096];
-        if (realpath(file, real)) {
+        if (preview_realpath(file, real, sizeof(real))) {
             sb u;
             sb_init(&u);
             sb_append(&u, "file://");
@@ -143,8 +143,7 @@ static void *watch_thread(void *p) {
     if (stat(a->file, &st) == 0)
         last = st.st_mtime;
     while (*a->running) {
-        struct timespec ts = {0, 250 * 1000 * 1000}; /* 250 ms poll */
-        nanosleep(&ts, NULL);
+        preview_sleep_ms(250); /* poll interval */
         if (!*a->running)
             break;
         if (stat(a->file, &st) != 0 || st.st_mtime == last)
@@ -162,6 +161,11 @@ static void *watch_thread(void *p) {
     }
     return NULL;
 }
+
+/* The PDF sandbox worker and its self-exec machinery are POSIX-only. On
+ * Windows PDFs render via pdf.js (no subprocess), so none of this is
+ * compiled. */
+#if !defined(_WIN32)
 
 /* Resolve the absolute path to this executable so the PDF worker can be
  * re-exec'd reliably regardless of how preview was invoked. */
@@ -221,7 +225,10 @@ static int sandbox_selftest(void) {
     return 4; /* exec returned: blocked with an error */
 }
 
+#endif /* !_WIN32 */
+
 int main(int argc, char **argv) {
+#if !defined(_WIN32)
     if (argc == 3 && strcmp(argv[1], "--render-pdf-worker") == 0)
         return pdf_worker(argv[2]);
     if (argc == 2 && strcmp(argv[1], "--sandbox-selftest") == 0)
@@ -230,6 +237,7 @@ int main(int argc, char **argv) {
     static char self_path[4096];
     if (resolve_self(self_path, sizeof(self_path)))
         preview_self = self_path;
+#endif
 
     const char *file = NULL;
     int dump_html = 0;
@@ -315,23 +323,23 @@ int main(int argc, char **argv) {
     else
         webview_set_html(w, rr.html);
 
-    pthread_t closer, watcher;
+    preview_thread closer, watcher;
     closer_args ca = {w, close_after};
     if (close_after >= 0)
-        pthread_create(&closer, NULL, closer_thread, &ca);
+        preview_thread_start(&closer, closer_thread, &ca);
 
     volatile int running = 1;
     watch_args wa = {w, file, &running};
     if (watch)
-        pthread_create(&watcher, NULL, watch_thread, &wa);
+        preview_thread_start(&watcher, watch_thread, &wa);
 
     webview_run(w);
 
     running = 0;
     if (watch)
-        pthread_join(watcher, NULL);
+        preview_thread_join(watcher);
     if (close_after >= 0)
-        pthread_join(closer, NULL);
+        preview_thread_join(closer);
     webview_destroy(w);
     free(rr.html);
     free(rr.url);

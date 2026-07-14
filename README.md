@@ -40,6 +40,7 @@ converter per file type.
 | XLSX | one table per sheet; shared strings and cached formula values |
 | PPTX | one card per slide: title, text, images (no positional layout) |
 | OpenDocument (`.odt .ods .odp`) | ODF → HTML: headings, styled text, lists, tables, images |
+| RTF | paragraphs, bold/italic/underline, unicode (minimal reader) |
 
 ## Building
 

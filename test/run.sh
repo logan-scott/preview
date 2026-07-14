@@ -183,16 +183,23 @@ hasnt "no-remote" "img-src data: https:"
 
 # --- syscall sandbox --------------------------------------------------------
 # The selftest applies the sandbox then tries to exec a program: a working
-# sandbox kills the process (Linux seccomp) or fails the exec (macOS).
-"$PREVIEW" --sandbox-selftest >/dev/null 2>&1
-sbec=$?
-if [ "$sbec" -eq 2 ]; then
-    echo "  (syscall sandbox unavailable on this platform; skipping)"
-elif [ "$sbec" -eq 4 ] || [ "$sbec" -ge 128 ]; then
-    ok   # exec blocked, by error or by termination
-else
-    bad "sandbox: exec was not blocked (exit $sbec)"
-fi
+# sandbox kills the process (Linux seccomp) or fails the exec (macOS). The
+# sandbox and its selftest are POSIX-only (Windows renders PDFs via pdf.js
+# with no subprocess), so skip the check there.
+case "$(uname -s 2>/dev/null)" in
+    MINGW* | MSYS* | CYGWIN*)
+        echo "  (syscall sandbox not applicable on Windows; skipping)" ;;
+    *)
+        "$PREVIEW" --sandbox-selftest >/dev/null 2>&1
+        sbec=$?
+        if [ "$sbec" -eq 2 ]; then
+            echo "  (syscall sandbox unavailable on this platform; skipping)"
+        elif [ "$sbec" -eq 4 ] || [ "$sbec" -ge 128 ]; then
+            ok   # exec blocked, by error or by termination
+        else
+            bad "sandbox: exec was not blocked (exit $sbec)"
+        fi ;;
+esac
 
 # --- CLI --------------------------------------------------------------------
 "$PREVIEW" --version >"$TMP" 2>&1; has "version" "preview "

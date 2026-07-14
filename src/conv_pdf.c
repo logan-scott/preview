@@ -1,12 +1,8 @@
 #include "conv_pdf.h"
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/resource.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include "page.h"
 #include "str.h"
@@ -85,6 +81,13 @@ char *pdf_render_inproc(const source_file *src) {
 char *convert_pdf(const source_file *src) { return pdf_render_inproc(src); }
 
 #else
+
+/* The mupdf path renders in a sandboxed child process (POSIX only; the
+ * pdf.js fallback is used on Windows, where none of this is compiled). */
+#include <errno.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <mupdf/fitz.h>
 

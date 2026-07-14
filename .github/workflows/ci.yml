@@ -58,3 +58,27 @@ jobs:
           make test NO_PDF=1 \
             CC="cc -fsanitize=address,undefined -fno-omit-frame-pointer" \
             CXX="c++ -fsanitize=address,undefined -fno-omit-frame-pointer"
+
+  # Windows via MSYS2/MinGW and WebView2 (PDF through the pdf.js fallback).
+  # Marked experimental while the WebView2 build path is stabilized, so a
+  # failure here does not fail the overall run.
+  windows:
+    runs-on: windows-latest
+    continue-on-error: true
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            make
+            python
+      - name: Build
+        run: make
+      - name: Test
+        run: make test
