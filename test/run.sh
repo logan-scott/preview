@@ -174,6 +174,13 @@ has "zip-bomb" "survived"      # body renders; oversized part refused, no OOM
 render bad.docx
 has "bad-docx" "Not a valid DOCX"
 
+# --- directory browsing -----------------------------------------------------
+"$PREVIEW" --dump-html "$FIX" >"$TMP" 2>/dev/null
+has "dir" 'class="dir"'
+has "dir" "previewOpen(a.dataset.path)"
+has "dir" "doc.md"
+has "dir" "../"
+
 # --- offline mode -----------------------------------------------------------
 "$PREVIEW" --dump-html "$FIX/doc.md" >"$TMP" 2>/dev/null
 has "default" "img-src data: https: http:;"          # remote images allowed

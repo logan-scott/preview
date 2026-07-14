@@ -93,7 +93,7 @@ endif
 
 C_SRCS   := src/main.c src/detect.c src/str.c src/page.c src/convert.c \
             src/conv_pdf.c src/conv_docx.c src/conv_xlsx.c src/conv_pptx.c \
-            src/conv_ipynb.c src/conv_odf.c src/conv_rtf.c \
+            src/conv_ipynb.c src/conv_odf.c src/conv_rtf.c src/conv_dir.c \
             src/xmlmini.c src/ziputil.c src/sandbox.c src/stb_impl.c
 MD4C_SRCS := vendor/md4c/md4c.c vendor/md4c/md4c-html.c vendor/md4c/entity.c
 MINIZ_SRCS:= vendor/miniz/miniz.c vendor/miniz/miniz_zip.c \

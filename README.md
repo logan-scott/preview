@@ -9,6 +9,7 @@ preview photo.png      # image
 preview notes.md       # rendered markdown
 preview data.csv       # table
 preview paper.pdf      # scrollable pages
+preview .              # browse a directory; click to open files
 ```
 
 Everything is converted to HTML/CSS and displayed in the OS's built-in web

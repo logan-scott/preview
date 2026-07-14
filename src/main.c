@@ -6,7 +6,9 @@
 #define WEBVIEW_HEADER
 #include "webview/webview.h"
 
+#include "cjson/cJSON.h"
 #include "compat.h"
+#include "conv_dir.h"
 #include "conv_pdf.h"
 #include "convert.h"
 #include "detect.h"
@@ -93,6 +95,11 @@ typedef struct {
  * content yields an error page. */
 static render_result build_render(const char *file) {
     render_result r = {NULL, NULL};
+    struct stat dst;
+    if (stat(file, &dst) == 0 && S_ISDIR(dst.st_mode)) {
+        r.html = convert_directory(file); /* NULL if unreadable */
+        return r;
+    }
     size_t len = 0;
     const char *err = NULL;
     uint8_t *data = read_entire_file(file, &len, &err);
@@ -128,6 +135,29 @@ static void apply_render(webview_t w, void *arg) {
     free(r->html);
     free(r->url);
     free(r);
+}
+
+/* JS binding: previewOpen(path) — re-render the window with another file
+ * or directory (used by the directory-listing links). */
+static void on_open(const char *id, const char *req, void *arg) {
+    webview_t w = arg;
+    cJSON *root = cJSON_Parse(req);
+    if (root && cJSON_IsArray(root)) {
+        cJSON *first = cJSON_GetArrayItem(root, 0);
+        if (cJSON_IsString(first) && first->valuestring[0]) {
+            render_result r = build_render(first->valuestring);
+            if (r.html)
+                webview_set_html(w, r.html);
+            else if (r.url)
+                webview_navigate(w, r.url);
+            if (r.html || r.url)
+                webview_set_title(w, path_basename(first->valuestring));
+            free(r.html);
+            free(r.url);
+        }
+    }
+    cJSON_Delete(root);
+    webview_return(w, id, 0, "null");
 }
 
 typedef struct {
@@ -354,6 +384,17 @@ int main(int argc, char **argv) {
 
     /* --dump-html: raw bytes for HTML, converted HTML otherwise. */
     if (dump_html) {
+        struct stat dst;
+        if (stat(file, &dst) == 0 && S_ISDIR(dst.st_mode)) {
+            char *html = convert_directory(file);
+            if (!html) {
+                fprintf(stderr, "preview: %s: cannot read directory\n", file);
+                return 1;
+            }
+            fputs(html, stdout);
+            free(html);
+            return 0;
+        }
         size_t len = 0;
         const char *err = NULL;
         uint8_t *data = read_entire_file(file, &len, &err);
@@ -390,6 +431,7 @@ int main(int argc, char **argv) {
     webview_set_title(w, path_basename(file));
     webview_set_size(w, cfg.width, cfg.height, WEBVIEW_HINT_NONE);
     webview_bind(w, "previewQuit", on_quit, w);
+    webview_bind(w, "previewOpen", on_open, w);
     /* Esc closes; space/arrows scroll natively. Runs on every page load. */
     webview_init(w,
                  "window.addEventListener('keydown',e=>{"
