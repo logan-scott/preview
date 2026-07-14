@@ -6,6 +6,8 @@ aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-14
+
 ### Added
 - Windows support (MinGW/MSYS2 + WebView2; PDF via pdf.js), verified in CI.
 - New formats: Jupyter notebooks (`.ipynb`), OpenDocument
@@ -13,6 +15,11 @@ aims to follow [Semantic Versioning](https://semver.org/).
 - File-manager integration: `make macos-app` builds a `Preview.app`
   bundle for "Open With"; `make install` installs a `preview.desktop`
   entry with MIME associations on Linux.
+- Directory browsing: `preview <dir>` lists a folder; clicking an entry
+  opens the file or subdirectory in place.
+- A config file (`~/.config/preview/config`) for window size and default
+  `no_remote`/`watch` settings.
+- A selectable/searchable text layer in the pdf.js PDF viewer.
 - Prebuilt release binaries (macOS arm64/x64, Linux x64, Windows x64) and
   a GitHub Release workflow.
 - Light/dark demo screenshots, `CHANGELOG.md`, `CONTRIBUTING.md`, issue/PR
@@ -58,7 +65,8 @@ aims to follow [Semantic Versioning](https://semver.org/).
   Markdown, URL-scheme allow-list, image-only inlining, a restrictive
   Content-Security-Policy, and bounded ZIP extraction.
 
-[Unreleased]: https://github.com/logan-scott/preview/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/logan-scott/preview/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/logan-scott/preview/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/logan-scott/preview/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/logan-scott/preview/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/logan-scott/preview/releases/tag/v0.1.0

@@ -23,7 +23,7 @@
 #include <mach-o/dyld.h>
 #endif
 
-#define PREVIEW_VERSION "0.2.1"
+#define PREVIEW_VERSION "0.3.0"
 
 static void usage(FILE *out) {
     fprintf(out,
@@ -33,8 +33,9 @@ static void usage(FILE *out) {
             "detected automatically and rendered as HTML.\n"
             "\n"
             "Supported types:\n"
-            "  Markdown, images (png/jpg/gif/webp/bmp/svg/...), plain text\n"
-            "  and source code, JSON, CSV/TSV, HTML, PDF, DOCX, XLSX, PPTX.\n"
+            "  Markdown, images, text and source code, JSON, Jupyter\n"
+            "  notebooks, CSV/TSV, HTML, PDF, DOCX/XLSX/PPTX, OpenDocument\n"
+            "  (odt/ods/odp), and RTF. A directory is shown as a listing.\n"
             "\n"
             "Options:\n"
             "  -h, --help          show this help and exit\n"
