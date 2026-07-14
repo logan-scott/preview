@@ -28,7 +28,12 @@ pinned() { grep -i "^$1" "$VER" 2>/dev/null | head -1 | sed 's/.*: *//'; }
 echo "dependency freshness (informational):"
 echo
 
-flag() { [ -n "$2" ] && [ "$1" != "$2" ] && echo "UPDATE?" || echo "ok"; }
+# $1 = pinned line (may carry a "(commit)"/"(license)" suffix), $2 = latest.
+# "ok" if the latest version string appears anywhere in the pinned line.
+flag() {
+    [ -z "$2" ] && { echo "no release"; return; }
+    case "$1" in *"$2"*) echo "ok" ;; *) echo "UPDATE?" ;; esac
+}
 
 # git-pinned single-header / source libs
 wv_pin=$(pinned webview); wv_new=$(gh_release webview/webview)
