@@ -1,0 +1,15 @@
+name: Dependency freshness
+
+on:
+  schedule:
+    - cron: "0 9 1 * *"   # 09:00 UTC on the 1st of each month
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare vendored deps to upstream
+        run: |
+          sh tools/check-deps.sh | tee "$GITHUB_STEP_SUMMARY"

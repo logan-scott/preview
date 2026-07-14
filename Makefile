@@ -136,6 +136,9 @@ $(BUILD):
 test: $(BIN)
 	sh test/run.sh $(abspath $(BIN))
 
+check-deps:
+	sh tools/check-deps.sh
+
 install: $(BIN)
 	$(INSTALL) -d $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 755 $(BIN) $(DESTDIR)$(BINDIR)/$(BIN)
