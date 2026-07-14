@@ -68,7 +68,12 @@ endif
 
 ifdef WINDOWS
   # WebView2 with the header's built-in loader; C++17 for its COM usage.
+  # WEBVIEW2_INCLUDE must point at the SDK headers (WebView2.h), e.g. the
+  # Microsoft.Web.WebView2 NuGet package's build/native/include directory.
   CXXFLAGS += -DWEBVIEW_MSWEBVIEW2_BUILTIN -std=c++17
+  ifdef WEBVIEW2_INCLUDE
+    CXXFLAGS += -I$(WEBVIEW2_INCLUDE)
+  endif
   LDLIBS   += -ladvapi32 -lole32 -loleaut32 -lshell32 -lshlwapi -luser32 \
               -lversion -luuid -lgdi32
 else ifeq ($(UNAME_S),Darwin)

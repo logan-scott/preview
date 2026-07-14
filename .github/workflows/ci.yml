@@ -76,10 +76,15 @@ jobs:
           update: true
           install: >-
             mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-webview2
             make
             python
+      - name: Fetch WebView2 SDK headers
+        run: |
+          curl -sL -o wv2.nupkg \
+            https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2792.45
+          python -c "import zipfile; zipfile.ZipFile('wv2.nupkg').extractall('wv2')"
+          test -f wv2/build/native/include/WebView2.h && echo "WebView2.h present"
       - name: Build
-        run: make
+        run: make WEBVIEW2_INCLUDE="$(pwd)/wv2/build/native/include"
       - name: Test
-        run: make test
+        run: make test WEBVIEW2_INCLUDE="$(pwd)/wv2/build/native/include"
