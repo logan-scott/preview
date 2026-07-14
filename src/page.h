@@ -6,7 +6,8 @@
 /* page_begin/page_end wrap converter output in a complete HTML document
  * with the shared stylesheet (light + dark via prefers-color-scheme). */
 enum {
-    PAGE_HLJS = 1 << 0, /* include highlight.js + theme + init script */
+    PAGE_HLJS = 1 << 0,  /* include highlight.js + theme + init script */
+    PAGE_PDFJS = 1 << 1, /* relax CSP for blob-URL scripts/workers (pdf.js) */
 };
 
 /* When nonzero, generated pages forbid remote subresources entirely

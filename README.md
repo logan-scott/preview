@@ -26,7 +26,7 @@ converter per file type.
 | JSON | pretty-printed |
 | CSV / TSV | HTML table |
 | HTML | rendered directly |
-| PDF | mupdf renders pages to PNG (first 200 pages) |
+| PDF | mupdf renders pages to PNG (first 200 pages); falls back to bundled pdf.js when built without mupdf |
 | DOCX | OOXML → HTML (paragraphs, headings, b/i/u/strike, sub/superscript, hyperlinks, nested lists, tables incl. colspan, inline images) |
 | XLSX | one table per sheet; shared strings and cached formula values |
 | PPTX | one card per slide: title, text, images (no positional layout) |
@@ -60,12 +60,18 @@ sudo pacman -S base-devel webkit2gtk-4.1 libmupdf
 make
 ```
 
-### PDF support / linking mupdf
+### PDF support: mupdf or the pdf.js fallback
 
-The Makefile resolves mupdf in this order and prints a warning (but still
-builds, minus PDF) when none is found:
+PDF works in **every** build. mupdf, when present, renders pages natively
+to sharp PNGs. When it's absent, `preview` falls back to a bundled copy of
+**pdf.js** that renders the PDF client-side in the web view — no native
+dependency, identical on macOS and Linux, just a larger binary (~1.4 MB
+of embedded JS) and client-side rendering.
 
-1. `make NO_PDF=1` — explicitly disable.
+The Makefile resolves mupdf in this order (falling back to pdf.js if none
+is found):
+
+1. `make NO_PDF=1` — skip mupdf and use the pdf.js fallback.
 2. `make MUPDF_PREFIX=/some/prefix` — a prefix containing `include/mupdf`
    and `lib/libmupdf.*`. Use this to link a static, from-source build
    (`make -C mupdf prefix=/some/prefix install`) for a fully portable
@@ -76,15 +82,15 @@ builds, minus PDF) when none is found:
    pkg-config file, use `MUPDF_PREFIX=/usr` (and if the static archive
    needs extra system libs, append them via `LDLIBS`).
 
-Everything else (md4c, miniz, stb_image, highlight.js) is embedded in the
-binary; the only unconditional dynamic dependencies are the system web
-view and libc/libc++.
+Everything else (md4c, miniz, stb_image, highlight.js, pdf.js) is embedded
+in the binary; the only unconditional dynamic dependencies are the system
+web view and libc/libc++.
 
 **License note:** mupdf is AGPL-licensed. Building `preview` with mupdf
-and distributing the binary makes the combined work subject to the AGPL;
-for personal/internal use this doesn't matter, but distributors should
-either comply or build with `NO_PDF=1`. All other vendored libraries are
-MIT/BSD.
+and distributing the binary makes the combined work subject to the AGPL.
+Build with `NO_PDF=1` for a binary that is free of that obligation and
+still renders PDFs (via pdf.js, Apache-2.0). All other vendored libraries
+are MIT/BSD.
 
 ## Installing
 
@@ -211,7 +217,7 @@ Known limitations (deliberate trade-offs, not oversights):
   loaded directly (so its own relative assets and scripts work), *without*
   the CSP above — treat opening one like opening it in a browser.
 
-PDFs are parsed by mupdf in an **isolated child process** with a CPU
+PDFs (mupdf builds) are parsed in an **isolated child process** with a CPU
 limit and a **syscall sandbox**: seccomp-BPF on Linux and a Seatbelt
 profile on macOS forbid the process from executing programs or opening
 network connections before it is handed a single byte of the PDF. So a
@@ -220,6 +226,11 @@ memory-corruption bug in mupdf can at worst crash the child — which
 home from inside it. (Set `PREVIEW_PDF_NOSANDBOX=1` to render in-process,
 without either layer.) The child still shares the filesystem view of the
 main process, so a full filesystem jail would tighten it further.
+
+In pdf.js builds the PDF is instead parsed by pdf.js **inside the web
+view**, where it is confined by the same page CSP as everything else —
+`connect-src 'none'` means even a pdf.js bug cannot exfiltrate, and the
+web engine's own process sandbox contains it.
 
 ## Adding a format
 

@@ -76,9 +76,15 @@ void page_begin(sb *s, const char *title, unsigned flags) {
                  "<meta http-equiv=\"Content-Security-Policy\" content=\""
                  "default-src 'none';");
     sb_append(s, page_offline ? "img-src data:;" : "img-src data: https: http:;");
-    sb_append(s, "style-src 'unsafe-inline';"
-                 "script-src 'unsafe-inline';"
-                 "connect-src 'none';"
+    sb_append(s, "style-src 'unsafe-inline';");
+    /* The pdf.js fallback loads its library and worker from blob: URLs it
+     * builds in-page from embedded bytes; allow those and nothing more.
+     * connect-src stays 'none', so even the worker cannot reach the net. */
+    if (flags & PAGE_PDFJS)
+        sb_append(s, "script-src 'unsafe-inline' blob:;worker-src blob:;");
+    else
+        sb_append(s, "script-src 'unsafe-inline';");
+    sb_append(s, "connect-src 'none';"
                  "form-action 'none';"
                  "base-uri 'none';"
                  "object-src 'none'\">"

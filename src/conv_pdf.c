@@ -15,10 +15,71 @@ const char *preview_self = NULL;
 
 #ifdef PREVIEW_NO_PDF
 
+/* Without mupdf, render PDFs client-side with a bundled copy of pdf.js.
+ * The library, its worker, and the PDF bytes are embedded (base64) into a
+ * page that reconstructs them as blob URLs and draws each page to a
+ * canvas — no native dependency, same output on macOS and Linux. */
+#include "asset_pdfjs_js.h"
+#include "asset_pdfjs_worker_js.h"
+
 char *pdf_render_inproc(const source_file *src) {
-    return page_error(path_basename(src->path),
-                      "PDF support was not built into this binary",
-                      "rebuild with mupdf available (see README)");
+    sb s;
+    sb_init(&s);
+    page_begin(&s, path_basename(src->path), PAGE_PDFJS);
+    sb_append(&s,
+              "<style>body{background:var(--code-bg)}"
+              ".pdf{display:flex;flex-direction:column;align-items:center;"
+              "gap:16px;padding:24px 12px}"
+              ".pdf canvas{width:min(100%,850px);height:auto;background:#fff;"
+              "box-shadow:0 2px 12px var(--shadow)}"
+              ".pagecount,.pdferr{color:var(--muted);font-size:.8em}"
+              "</style><div class=\"pdf\" id=\"pdf\"></div><script>\n");
+
+    sb_append(&s, "var PDFJS_B64=\"");
+    sb_append_base64(&s, ASSET_PDFJS_JS, ASSET_PDFJS_JS_len);
+    sb_append(&s, "\";\nvar WORKER_B64=\"");
+    sb_append_base64(&s, ASSET_PDFJS_WORKER_JS, ASSET_PDFJS_WORKER_JS_len);
+    sb_append(&s, "\";\nvar PDF_B64=\"");
+    sb_append_base64(&s, src->data, src->len);
+    sb_append(&s, "\";\n");
+
+    sb_append(
+        &s,
+        "function b64bytes(b){var s=atob(b),n=s.length,a=new Uint8Array(n);"
+        "for(var i=0;i<n;i++)a[i]=s.charCodeAt(i);return a;}\n"
+        "function blobUrl(bytes){return URL.createObjectURL("
+        "new Blob([bytes],{type:'application/javascript'}));}\n"
+        "var box=document.getElementById('pdf');\n"
+        "function fail(m){var d=document.createElement('p');d.className="
+        "'pdferr';d.textContent='Could not render PDF: '+m;"
+        "box.appendChild(d);}\n"
+        "var lib=document.createElement('script');\n"
+        "lib.src=blobUrl(b64bytes(PDFJS_B64));\n"
+        "lib.onload=function(){\n"
+        "  pdfjsLib.GlobalWorkerOptions.workerSrc="
+        "blobUrl(b64bytes(WORKER_B64));\n"
+        "  pdfjsLib.getDocument({data:b64bytes(PDF_B64)}).promise.then("
+        "function(pdf){\n"
+        "    var n=Math.min(pdf.numPages,200),chain=Promise.resolve();\n"
+        "    for(var p=1;p<=n;p++){(function(p){chain=chain.then(function(){\n"
+        "      return pdf.getPage(p).then(function(page){\n"
+        "        var vp=page.getViewport({scale:2});\n"
+        "        var c=document.createElement('canvas');\n"
+        "        c.width=vp.width;c.height=vp.height;box.appendChild(c);\n"
+        "        return page.render({canvasContext:c.getContext('2d'),"
+        "viewport:vp}).promise;\n"
+        "      });});})(p);}\n"
+        "    chain.then(function(){var d=document.createElement('p');"
+        "d.className='pagecount';var t=pdf.numPages+' page'+"
+        "(pdf.numPages===1?'':'s');d.textContent=t;box.appendChild(d);"
+        "document.title+=' \\u2014 '+t;}).catch(function(e){fail(''+e);});\n"
+        "  }).catch(function(e){fail(''+e);});\n"
+        "};\n"
+        "lib.onerror=function(){fail('could not load pdf.js');};\n"
+        "document.head.appendChild(lib);\n"
+        "</script>");
+    page_end(&s, 0);
+    return sb_take(&s);
 }
 
 char *convert_pdf(const source_file *src) { return pdf_render_inproc(src); }

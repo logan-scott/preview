@@ -26,11 +26,11 @@ LDLIBS  +=
 
 UNAME_S := $(shell uname -s)
 
-# --- PDF support (mupdf) ---
-# Resolution order: NO_PDF=1 disables; MUPDF_PREFIX=<dir> points at an
+# --- PDF support (mupdf, with a pdf.js fallback) ---
+# Resolution order: NO_PDF=1 skips mupdf; MUPDF_PREFIX=<dir> points at an
 # install prefix (include/ + lib/); otherwise Homebrew (macOS) or
-# pkg-config (Linux) is probed. Without mupdf the build still succeeds,
-# minus PDF rendering.
+# pkg-config (Linux) is probed. Without mupdf the build still renders PDFs
+# via the bundled pdf.js fallback (see conv_pdf.c).
 ifeq ($(NO_PDF),)
   ifeq ($(MUPDF_PREFIX),)
     ifeq ($(UNAME_S),Darwin)
@@ -49,7 +49,7 @@ ifeq ($(NO_PDF),)
 endif
 ifeq ($(HAVE_PDF),)
   CFLAGS += -DPREVIEW_NO_PDF
-  $(warning PDF support disabled: mupdf not found. macOS: brew install mupdf | Debian/Ubuntu: apt install libmupdf-dev then MUPDF_LIBS as needed | or set MUPDF_PREFIX=<dir>)
+  $(warning mupdf not found: PDFs will render via the bundled pdf.js fallback. For native rendering install mupdf (macOS: brew install mupdf | Debian/Ubuntu: apt install libmupdf-dev) or set MUPDF_PREFIX=<dir>.)
 endif
 
 ifeq ($(UNAME_S),Darwin)
@@ -81,6 +81,7 @@ OBJS := $(C_SRCS:src/%.c=$(BUILD)/%.o) \
         $(CXX_SRCS:src/%.cc=$(BUILD)/%.oo)
 
 ASSET_HDRS := $(BUILD)/asset_hljs_js.h $(BUILD)/asset_hljs_css.h
+PDFJS_HDRS := $(BUILD)/asset_pdfjs_js.h $(BUILD)/asset_pdfjs_worker_js.h
 
 all: $(BIN)
 
@@ -116,7 +117,17 @@ $(BUILD)/asset_hljs_js.h: assets/hljs.min.js $(BUILD)/embed
 $(BUILD)/asset_hljs_css.h: $(BUILD)/hljs_theme.css $(BUILD)/embed
 	$(BUILD)/embed ASSET_HLJS_CSS $< > $@
 
+# pdf.js (only embedded when building without mupdf — see conv_pdf.c)
+$(BUILD)/asset_pdfjs_js.h: assets/pdf.min.js $(BUILD)/embed
+	$(BUILD)/embed ASSET_PDFJS_JS $< > $@
+
+$(BUILD)/asset_pdfjs_worker_js.h: assets/pdf.worker.min.js $(BUILD)/embed
+	$(BUILD)/embed ASSET_PDFJS_WORKER_JS $< > $@
+
 $(BUILD)/page.o: $(ASSET_HDRS)
+ifeq ($(HAVE_PDF),)
+$(BUILD)/conv_pdf.o: $(PDFJS_HDRS)
+endif
 $(OBJS): $(wildcard src/*.h)
 
 $(BUILD):

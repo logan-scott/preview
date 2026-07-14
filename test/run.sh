@@ -118,11 +118,17 @@ has "pptx" "data:image/png;base64,"
 
 # --- pdf (skip strict checks when built without mupdf) ----------------------
 render three.pdf
-if grep -qF "PDF support was not built" "$TMP"; then
-    echo "  (PDF support not built; skipping PDF render assertions)"
-    render corrupt.pdf
-    has "corrupt-pdf" "PDF support was not built"
+if grep -qF "pdfjsLib" "$TMP"; then
+    # Built without mupdf: PDFs render client-side via bundled pdf.js, so
+    # --dump-html carries the machinery, not pre-rendered images.
+    echo "  (pdf.js fallback build; asserting the viewer, not pixels)"
+    has "pdf-fallback" "getDocument"
+    has "pdf-fallback" "GlobalWorkerOptions.workerSrc"
+    hasnt "pdf-fallback" "not built into this binary"
+    render corrupt.pdf   # a PDF, even a broken one, still routes to pdf.js
+    has "corrupt-pdf-fallback" "pdfjsLib"
 else
+    # mupdf build: pages are rendered server-side to PNGs.
     count_is "pdf" "data:image/png;base64," 3
     has "pdf" "3 pages"
     render corrupt.pdf

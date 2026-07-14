@@ -42,9 +42,10 @@ class Preview < Formula
     html = shell_output("#{bin}/preview --dump-html #{testpath}/t.md")
     assert_match "<h1>Hello</h1>", html
 
-    # PDF support must actually be compiled in (guards against the mupdf
-    # detection silently failing during the build). mupdf repairs the
-    # missing xref, so a bare object tree is enough to render.
+    # mupdf must actually be linked: assert a server-rendered page image,
+    # which the pdf.js fallback (used when mupdf is absent) would not
+    # produce. mupdf repairs the missing xref, so a bare object tree is
+    # enough to render.
     (testpath/"t.pdf").write(<<~PDF)
       %PDF-1.4
       1 0 obj
@@ -61,6 +62,6 @@ class Preview < Formula
       %%EOF
     PDF
     pdf = shell_output("#{bin}/preview --dump-html #{testpath}/t.pdf")
-    refute_match "not built into this binary", pdf
+    assert_match "data:image/png", pdf
   end
 end
