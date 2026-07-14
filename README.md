@@ -15,6 +15,14 @@ Everything is converted to HTML/CSS and displayed in the OS's built-in web
 view (WKWebView on macOS, WebKitGTK on Linux) — one rendering surface, one
 converter per file type.
 
+<p align="center">
+  <img src="docs/demo-light.png" alt="Markdown rendered in light mode" width="46%">
+  &nbsp;
+  <img src="docs/demo-dark.png" alt="Markdown rendered in dark mode" width="46%">
+</p>
+
+<p align="center"><sub>The same Markdown rendered in light and dark — the theme follows your OS setting.</sub></p>
+
 ## Supported formats
 
 | Format | How it renders |
