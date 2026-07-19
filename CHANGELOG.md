@@ -6,6 +6,13 @@ aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- macOS: copying from a previewed document (Cmd+C) did nothing. The app had
+  no menu bar, and macOS dispatches the standard editing shortcuts as menu
+  key equivalents, so Cmd+C never reached the web view. `preview` now
+  installs an App/Edit/Window menu bar, restoring Copy, Cut, Paste, and
+  Select All.
+
 ## [0.3.0] - 2026-07-14
 
 ### Added

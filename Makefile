@@ -77,7 +77,9 @@ ifdef WINDOWS
   LDLIBS   += -ladvapi32 -lole32 -loleaut32 -lshell32 -lshlwapi -luser32 \
               -lversion -luuid -lgdi32
 else ifeq ($(UNAME_S),Darwin)
-  LDLIBS += -framework WebKit -ldl
+  LDLIBS += -framework WebKit -framework Cocoa -ldl
+  # Objective-C: installs the menu bar (needed for Cmd+C in the web view)
+  OBJC_SRCS := src/macos_menu.m
 else ifeq ($(UNAME_S),Linux)
   # Pick the newest WebKitGTK present: GTK4/webkitgtk-6.0, then GTK3/4.1, then GTK3/4.0
   WEBKIT_PC := $(shell for pc in "gtk4 webkitgtk-6.0" "gtk+-3.0 webkit2gtk-4.1" "gtk+-3.0 webkit2gtk-4.0"; do \
@@ -105,6 +107,7 @@ OBJS := $(C_SRCS:src/%.c=$(BUILD)/%.o) \
         $(MD4C_SRCS:vendor/md4c/%.c=$(BUILD)/md4c_%.o) \
         $(MINIZ_SRCS:vendor/miniz/%.c=$(BUILD)/mz_%.o) \
         $(CJSON_SRCS:vendor/cjson/%.c=$(BUILD)/cjson_%.o) \
+        $(OBJC_SRCS:src/%.m=$(BUILD)/%.om) \
         $(CXX_SRCS:src/%.cc=$(BUILD)/%.oo)
 
 ASSET_HDRS := $(BUILD)/asset_hljs_js.h $(BUILD)/asset_hljs_css.h
@@ -125,6 +128,9 @@ $(BUILD)/mz_%.o: vendor/miniz/%.c | $(BUILD)
 	$(CC) $(CFLAGS) -Ivendor/miniz -c -o $@ $<
 
 $(BUILD)/cjson_%.o: vendor/cjson/%.c | $(BUILD)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILD)/%.om: src/%.m | $(BUILD)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(BUILD)/%.oo: src/%.cc | $(BUILD)

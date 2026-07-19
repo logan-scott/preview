@@ -21,6 +21,8 @@
 #endif
 #if defined(__APPLE__)
 #include <mach-o/dyld.h>
+
+#include "macos_menu.h"
 #endif
 
 #define PREVIEW_VERSION "0.3.0"
@@ -429,6 +431,10 @@ int main(int argc, char **argv) {
         free(rr.url);
         return 1;
     }
+#if defined(__APPLE__)
+    /* Give the app a menu bar so Cmd+C / Cmd+A reach the web view. */
+    preview_install_menu();
+#endif
     webview_set_title(w, path_basename(file));
     webview_set_size(w, cfg.width, cfg.height, WEBVIEW_HINT_NONE);
     webview_bind(w, "previewQuit", on_quit, w);
